@@ -1,3 +1,4 @@
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import type { AuthResponse, LoginPayload, SignUpPayload, User } from '../types'
 
@@ -10,6 +11,19 @@ export function validateEmail(email: string): boolean {
 
 export function validatePassword(password: string): boolean {
   return password.length >= MIN_PASSWORD_LENGTH
+}
+
+export function mapSupabaseUser(supabaseUser: SupabaseUser): User {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email ?? '',
+    createdAt: supabaseUser.created_at,
+  }
+}
+
+export async function getCurrentSession(): Promise<Session | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session
 }
 
 export async function signUp(payload: SignUpPayload): Promise<AuthResponse> {
@@ -29,12 +43,7 @@ export async function signUp(payload: SignUpPayload): Promise<AuthResponse> {
     return { user: null, error: error?.message ?? 'Sign up failed' }
   }
 
-  const user: User = {
-    id: data.user.id,
-    email: data.user.email ?? payload.email,
-    createdAt: data.user.created_at,
-  }
-  return { user, error: null }
+  return { user: mapSupabaseUser(data.user), error: null }
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
@@ -51,10 +60,5 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     return { user: null, error: 'Invalid credentials' }
   }
 
-  const user: User = {
-    id: data.user.id,
-    email: data.user.email ?? payload.email,
-    createdAt: data.user.created_at,
-  }
-  return { user, error: null }
+  return { user: mapSupabaseUser(data.user), error: null }
 }
