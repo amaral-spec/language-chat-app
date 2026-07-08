@@ -37,27 +37,54 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="New Conversation">
-      <form onSubmit={handleSubmit}>
-        <h2>New Conversation</h2>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="New Conversation"
+      className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-lg"
+      >
+        <h2 className="text-lg font-semibold text-gray-900">New Conversation</h2>
 
-        <label htmlFor="friend-email">Friend's email</label>
-        <input
-          id="friend-email"
-          type="email"
-          value={friendEmail}
-          onChange={(event) => setFriendEmail(event.target.value)}
-          required
-        />
+        <div className="space-y-1">
+          <label htmlFor="friend-email" className="block text-sm font-medium text-gray-700">
+            Friend's email
+          </label>
+          <input
+            id="friend-email"
+            type="email"
+            value={friendEmail}
+            onChange={(event) => setFriendEmail(event.target.value)}
+            required
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
 
-        {error && <p role="alert">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
 
-        <button type="submit" disabled={isSubmitting}>
-          Create
-        </button>
-        <button type="button" onClick={handleClose}>
-          Cancel
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Create
+          </button>
+        </div>
       </form>
     </div>
   )
