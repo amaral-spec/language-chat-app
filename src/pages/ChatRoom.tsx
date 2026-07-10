@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import Chat from '../components/Chat'
 import MessageInput from '../components/MessageInput'
 import { useAuth } from '../hooks/useAuth'
+import { useCorrections } from '../hooks/useCorrections'
 import { useMessages } from '../hooks/useMessages'
 
 function ChatRoom() {
@@ -9,6 +10,7 @@ function ChatRoom() {
   const { user } = useAuth()
   const { messages, isLoading, hasMoreHistory, isLoadingMore, error, sendMessage, loadMoreHistory } =
     useMessages(conversationId)
+  const { correctionsByMessageId } = useCorrections(conversationId)
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -26,6 +28,7 @@ function ChatRoom() {
           <Chat
             messages={messages}
             currentUserId={user?.id}
+            correctionsByMessageId={correctionsByMessageId}
             onLoadMore={loadMoreHistory}
             hasMore={hasMoreHistory}
             isLoadingMore={isLoadingMore}

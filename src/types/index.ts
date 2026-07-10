@@ -53,3 +53,28 @@ export interface SendMessageResponse {
   message: Message | null
   error: string | null
 }
+
+export interface Correction {
+  id: string
+  messageId: string
+  conversationId: string
+  correctedText: string
+  explanation: string
+  confidence: number
+  acceptedByUser: boolean
+  createdAt: string
+}
+
+export interface CorrectionPayload {
+  messageId: string
+  text: string
+}
+
+export interface ClaudeAPIResponse {
+  correction: {
+    original: string
+    corrected: string
+    explanation: string
+    confidence: number
+  } | null
+}

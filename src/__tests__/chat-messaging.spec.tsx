@@ -16,6 +16,9 @@ vi.mock('../lib/supabaseClient', () => ({
     rpc: vi.fn(),
     channel: vi.fn(),
     removeChannel: vi.fn(),
+    functions: {
+      invoke: vi.fn(() => Promise.resolve({ data: { correction: null }, error: null })),
+    },
   },
 }))
 
@@ -72,7 +75,31 @@ function makeChannelMock() {
   return channel as Record<string, unknown> & { emitInsert: (row: Record<string, unknown>) => void }
 }
 
-let lastChannelMock: ReturnType<typeof makeChannelMock> | undefined
+// Desde que ChatRoom passou a também assinar corrections (useCorrections),
+// `supabase.from`/`supabase.channel` são chamados mais de uma vez por
+// render, para tabelas/canais diferentes — não dá mais para assumir "a
+// única/última chamada" como os testes antigos faziam. Os mocks abaixo
+// despacham por nome de tabela/canal em vez de por ordem de chamada, e
+// caem num builder/canal vazio por padrão para chamadas que o teste não
+// se importa em controlar (ex: a correction list de um teste que só quer
+// testar mensagens).
+const fromQueuesByTable = new Map<string, Array<() => unknown>>()
+
+function queueFromOnce(table: string, factory: () => unknown) {
+  const queue = fromQueuesByTable.get(table) ?? []
+  queue.push(factory)
+  fromQueuesByTable.set(table, queue)
+}
+
+const channelMocksByName = new Map<string, ReturnType<typeof makeChannelMock>>()
+
+function getChannelMock(name: string) {
+  return channelMocksByName.get(name)
+}
+
+function getMessagesChannelMock(conversationId = 'conv-1') {
+  return getChannelMock(`messages:${conversationId}`)
+}
 
 function mockLoggedInUser(id = 'user-1', email = 'me@example.com') {
   vi.mocked(supabase.auth.getSession).mockResolvedValue({
@@ -125,13 +152,28 @@ beforeEach(() => {
     data: { subscription: { unsubscribe: vi.fn() } },
   } as never)
 
-  // Todo render de ChatRoom assina Realtime (useMessages -> subscribeToMessages
-  // -> supabase.channel(...)); sem um mock padrão aqui, qualquer teste que não
-  // se importa com Realtime quebraria ao montar o chat.
-  lastChannelMock = undefined
-  vi.mocked(supabase.channel).mockImplementation(() => {
-    lastChannelMock = makeChannelMock()
-    return lastChannelMock as never
+  // Todo render de ChatRoom assina Realtime tanto para mensagens quanto
+  // para corrections (dois canais distintos); sem um mock padrão aqui,
+  // qualquer teste que não se importa com Realtime quebraria ao montar o
+  // chat. Cada canal é guardado por nome, para os testes pegarem o certo.
+  channelMocksByName.clear()
+  vi.mocked(supabase.channel).mockImplementation((name: string) => {
+    const mock = makeChannelMock()
+    channelMocksByName.set(name, mock)
+    return mock as never
+  })
+
+  // `supabase.from` despachado por tabela: um teste que só queira controlar
+  // a resposta de `messages` (via queueFromOnce) não precisa se preocupar
+  // com a chamada extra a `corrections` feita por useCorrections — ela cai
+  // no builder vazio padrão.
+  fromQueuesByTable.clear()
+  vi.mocked(supabase.from).mockImplementation((table: string) => {
+    const queue = fromQueuesByTable.get(table)
+    if (queue && queue.length > 0) {
+      return queue.shift()!() as never
+    }
+    return makeBuilder({ data: [], error: null }) as never
   })
 })
 
@@ -440,19 +482,19 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
   function mockEmptyHistory() {
     mockLoggedInUser()
     // useMessages -> getMessages('conv-1')
-    vi.mocked(supabase.from).mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
+    queueFromOnce('messages', () => makeBuilder({ data: [], error: null }))
   }
 
   it('digita mensagem e envia → aparece imediatamente no chat, antes do Supabase responder (otimista)', async () => {
     mockEmptyHistory()
 
     const deferred = createDeferred<SupabaseResult>()
-    vi.mocked(supabase.from).mockImplementationOnce(() => {
+    queueFromOnce('messages', () => {
       const builder: Record<string, unknown> = {}
       builder.insert = vi.fn(() => builder)
       builder.select = vi.fn(() => builder)
       builder.single = vi.fn(() => deferred.promise)
-      return builder as never
+      return builder
     })
 
     const user = userEvent.setup()
@@ -491,7 +533,7 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
     const insertSpy = vi.fn(function insert(this: Record<string, unknown>, _payload: Record<string, unknown>) {
       return this
     })
-    vi.mocked(supabase.from).mockImplementationOnce(() => {
+    queueFromOnce('messages', () => {
       const builder: Record<string, unknown> = {}
       builder.insert = insertSpy.bind(builder)
       builder.select = vi.fn(() => builder)
@@ -507,7 +549,7 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
           error: null,
         }),
       )
-      return builder as never
+      return builder
     })
 
     const user = userEvent.setup()
@@ -532,7 +574,7 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
     const insertSpy = vi.fn(function insert(this: Record<string, unknown>, _payload: Record<string, unknown>) {
       return this
     })
-    vi.mocked(supabase.from).mockImplementationOnce(() => {
+    queueFromOnce('messages', () => {
       const builder: Record<string, unknown> = {}
       builder.insert = insertSpy.bind(builder)
       builder.select = vi.fn(() => builder)
@@ -548,7 +590,7 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
           error: null,
         }),
       )
-      return builder as never
+      return builder
     })
 
     const user = userEvent.setup()
@@ -566,27 +608,26 @@ describe('Chat / Envio de mensagens (Fatia 3)', () => {
 
   it('ao montar a página do zero (equivalente a recarregar) → histórico carrega via loadHistory', async () => {
     mockLoggedInUser()
-    vi.mocked(supabase.from).mockImplementationOnce(
-      () =>
-        makeBuilder({
-          data: [
-            {
-              id: 'msg-1',
-              conversation_id: 'conv-1',
-              sender_id: 'friend-1',
-              content: 'Hey there',
-              created_at: '2026-01-01T00:00:00Z',
-            },
-            {
-              id: 'msg-2',
-              conversation_id: 'conv-1',
-              sender_id: 'user-1',
-              content: 'Hi back',
-              created_at: '2026-01-01T00:00:05Z',
-            },
-          ],
-          error: null,
-        }) as never,
+    queueFromOnce('messages', () =>
+      makeBuilder({
+        data: [
+          {
+            id: 'msg-1',
+            conversation_id: 'conv-1',
+            sender_id: 'friend-1',
+            content: 'Hey there',
+            created_at: '2026-01-01T00:00:00Z',
+          },
+          {
+            id: 'msg-2',
+            conversation_id: 'conv-1',
+            sender_id: 'user-1',
+            content: 'Hi back',
+            created_at: '2026-01-01T00:00:05Z',
+          },
+        ],
+        error: null,
+      }),
     )
 
     renderChatRoom()
@@ -638,7 +679,7 @@ describe('Realtime + Histórico (Fatia 4)', () => {
   function mockEmptyHistory() {
     mockLoggedInUser()
     // useMessages -> loadHistory('conv-1', { limit: 50 })
-    vi.mocked(supabase.from).mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
+    queueFromOnce('messages', () => makeBuilder({ data: [], error: null }))
   }
 
   /** Gera `count` linhas de mensagem em ordem cronológica ASCENDENTE,
@@ -662,9 +703,9 @@ describe('Realtime + Histórico (Fatia 4)', () => {
     renderChatRoom()
     await screen.findByText('No messages yet. Say hello!')
 
-    expect(lastChannelMock).toBeDefined()
+    expect(getMessagesChannelMock()).toBeDefined()
 
-    lastChannelMock!.emitInsert({
+    getMessagesChannelMock()!.emitInsert({
       id: 'msg-remote-1',
       conversation_id: 'conv-1',
       sender_id: 'friend-1',
@@ -679,12 +720,12 @@ describe('Realtime + Histórico (Fatia 4)', () => {
     mockEmptyHistory()
 
     const deferred = createDeferred<SupabaseResult>()
-    vi.mocked(supabase.from).mockImplementationOnce(() => {
+    queueFromOnce('messages', () => {
       const builder: Record<string, unknown> = {}
       builder.insert = vi.fn(() => builder)
       builder.select = vi.fn(() => builder)
       builder.single = vi.fn(() => deferred.promise)
-      return builder as never
+      return builder
     })
 
     const user = userEvent.setup()
@@ -707,7 +748,7 @@ describe('Realtime + Histórico (Fatia 4)', () => {
 
     // O evento Realtime chega ANTES da resposta do insert resolver — o
     // mesmo id não pode gerar uma segunda bolha de mensagem.
-    lastChannelMock!.emitInsert(confirmedRow)
+    getMessagesChannelMock()!.emitInsert(confirmedRow)
     await waitFor(() => {
       expect(screen.getAllByText('Hello world', { selector: 'p' })).toHaveLength(1)
     })
@@ -724,7 +765,7 @@ describe('Realtime + Histórico (Fatia 4)', () => {
     mockLoggedInUser()
 
     const builder = makeBuilder({ data: [], error: null })
-    vi.mocked(supabase.from).mockImplementationOnce(() => builder as never)
+    queueFromOnce('messages', () => builder)
 
     renderChatRoom()
 
@@ -744,9 +785,8 @@ describe('Realtime + Histórico (Fatia 4)', () => {
     const olderAscending = buildAscendingMessageRows(3, 0)
     const olderBuilder = makeBuilder({ data: [...olderAscending].reverse(), error: null })
 
-    vi.mocked(supabase.from)
-      .mockImplementationOnce(() => makeBuilder({ data: [...initialAscending].reverse(), error: null }) as never)
-      .mockImplementationOnce(() => olderBuilder as never)
+    queueFromOnce('messages', () => makeBuilder({ data: [...initialAscending].reverse(), error: null }))
+    queueFromOnce('messages', () => olderBuilder)
 
     renderChatRoom()
 
@@ -776,7 +816,7 @@ describe('Realtime + Histórico (Fatia 4)', () => {
     const { unmount } = renderChatRoom()
     await screen.findByText('No messages yet. Say hello!')
 
-    const channelUsed = lastChannelMock
+    const channelUsed = getMessagesChannelMock()
     expect(channelUsed).toBeDefined()
     expect(supabase.removeChannel).not.toHaveBeenCalled()
 

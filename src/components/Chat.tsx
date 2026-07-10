@@ -1,6 +1,6 @@
 import { useRef, type UIEvent } from 'react'
 import MessageBubble from './MessageBubble'
-import type { Message } from '../types'
+import type { Correction, Message } from '../types'
 
 // Distância (em px) do topo do container a partir da qual consideramos que
 // o usuário "chegou perto do topo" e disparamos o carregamento de mais
@@ -10,12 +10,20 @@ const LOAD_MORE_SCROLL_THRESHOLD = 50
 interface ChatProps {
   messages: Message[]
   currentUserId: string | undefined
+  correctionsByMessageId?: Record<string, Correction>
   onLoadMore?: () => void
   hasMore?: boolean
   isLoadingMore?: boolean
 }
 
-function Chat({ messages, currentUserId, onLoadMore, hasMore = false, isLoadingMore = false }: ChatProps) {
+function Chat({
+  messages,
+  currentUserId,
+  correctionsByMessageId,
+  onLoadMore,
+  hasMore = false,
+  isLoadingMore = false,
+}: ChatProps) {
   const hasHandledTopRef = useRef(false)
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
@@ -44,7 +52,12 @@ function Chat({ messages, currentUserId, onLoadMore, hasMore = false, isLoadingM
     <div className="flex h-full flex-col gap-2 overflow-y-auto" onScroll={handleScroll} data-testid="chat-scroll-container">
       {isLoadingMore && <p className="text-center text-sm text-gray-500">Loading more messages...</p>}
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} isOwnMessage={message.senderId === currentUserId} />
+        <MessageBubble
+          key={message.id}
+          message={message}
+          isOwnMessage={message.senderId === currentUserId}
+          correction={correctionsByMessageId?.[message.id]}
+        />
       ))}
     </div>
   )

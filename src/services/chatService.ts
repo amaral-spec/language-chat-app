@@ -3,6 +3,7 @@ import { validateEmail } from './authService'
 import type {
   Conversation,
   ConversationWithPreview,
+  Correction,
   CreateConversationResponse,
   CreateMessagePayload,
   Message,
@@ -38,11 +39,35 @@ interface UserRow {
   email: string
 }
 
+interface CorrectionRow {
+  id: string
+  message_id: string
+  conversation_id: string
+  corrected_text: string
+  explanation: string
+  confidence: number
+  accepted_by_user: boolean
+  created_at: string
+}
+
 function mapConversation(row: ConversationRow): Conversation {
   return {
     id: row.id,
     user1Id: row.user1_id,
     user2Id: row.user2_id,
+    createdAt: row.created_at,
+  }
+}
+
+function mapCorrection(row: CorrectionRow): Correction {
+  return {
+    id: row.id,
+    messageId: row.message_id,
+    conversationId: row.conversation_id,
+    correctedText: row.corrected_text,
+    explanation: row.explanation,
+    confidence: row.confidence,
+    acceptedByUser: row.accepted_by_user,
     createdAt: row.created_at,
   }
 }
@@ -308,6 +333,52 @@ export function subscribeToMessages(
       },
       (payload: { new: MessageRow }) => {
         onInsert(mapMessage(payload.new))
+      },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * Assina INSERT (nova correção) e UPDATE (accepted_by_user mudou) na
+ * tabela `corrections`, filtrados por conversa. Os dois eventos disparam o
+ * mesmo callback — quem chama trata ambos como "esta é a versão atual da
+ * correção da mensagem X", sem distinguir criação de atualização.
+ *
+ * Retorna uma função de unsubscribe, a ser chamada no cleanup do efeito
+ * que criou a subscription.
+ */
+export function subscribeToCorrections(
+  conversationId: string,
+  onChange: (correction: Correction) => void,
+): () => void {
+  const channel = supabase
+    .channel(`corrections:${conversationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'corrections',
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload: { new: CorrectionRow }) => {
+        onChange(mapCorrection(payload.new))
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'corrections',
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload: { new: CorrectionRow }) => {
+        onChange(mapCorrection(payload.new))
       },
     )
     .subscribe()
