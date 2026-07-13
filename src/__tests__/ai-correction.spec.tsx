@@ -322,7 +322,7 @@ describe('Mostrar correções no UI (Fatia 3)', () => {
 })
 
 describe('Aceitar/Rejeitar correção (Fatia 4)', () => {
-  it('click em "Accept" marca accepted_by_user no banco e esconde o painel', async () => {
+  it('click em "Accept" marca accepted_by_user no banco, risca a mensagem original e mostra a versão corrigida completa', async () => {
     mockOneMessage()
     queueFromOnce('corrections', () => makeBuilder({ data: [correctionRow], error: null }))
 
@@ -348,6 +348,10 @@ describe('Aceitar/Rejeitar correção (Fatia 4)', () => {
     await waitFor(() => {
       expect(screen.queryByText('Correction')).not.toBeInTheDocument()
     })
+
+    expect(screen.getByText('I goed to the store')).toHaveClass('line-through')
+    expect(screen.getByText('Corrected')).toBeInTheDocument()
+    expect(screen.getByText('I went to the store')).toBeInTheDocument()
   })
 
   it('click em "Dismiss" esconde o painel sem chamar update', async () => {
@@ -363,7 +367,7 @@ describe('Aceitar/Rejeitar correção (Fatia 4)', () => {
     expect(screen.queryByText('Correction')).not.toBeInTheDocument()
   })
 
-  it('correção já aceita (carregada do histórico) não mostra o painel novamente', async () => {
+  it('correção já aceita (carregada do histórico) não mostra o painel, mas mostra a versão corrigida direto', async () => {
     mockOneMessage()
     queueFromOnce('corrections', () =>
       makeBuilder({ data: [{ ...correctionRow, accepted_by_user: true }], error: null }),
@@ -373,9 +377,11 @@ describe('Aceitar/Rejeitar correção (Fatia 4)', () => {
 
     await screen.findByText('I goed to the store')
     expect(screen.queryByText('Correction')).not.toBeInTheDocument()
+    expect(screen.getByText('I goed to the store')).toHaveClass('line-through')
+    expect(screen.getByText('I went to the store')).toBeInTheDocument()
   })
 
-  it('estado de aceite chega via Realtime (UPDATE) e some para o outro participante também', async () => {
+  it('estado de aceite chega via Realtime (UPDATE) e a versão corrigida aparece para o outro participante também', async () => {
     mockOneMessage()
     queueFromOnce('corrections', () => makeBuilder({ data: [correctionRow], error: null }))
 
@@ -387,5 +393,7 @@ describe('Aceitar/Rejeitar correção (Fatia 4)', () => {
     await waitFor(() => {
       expect(screen.queryByText('Correction')).not.toBeInTheDocument()
     })
+    expect(screen.getByText('I goed to the store')).toHaveClass('line-through')
+    expect(screen.getByText('I went to the store')).toBeInTheDocument()
   })
 })

@@ -1,32 +1,18 @@
-import { useState } from 'react'
-import { markCorrectionAsAccepted } from '../services/correctionService'
 import type { Correction } from '../types'
 
 interface CorrectionPanelProps {
   correction: Correction
+  onAccept: () => void
+  onDismiss: () => void
 }
 
 /**
- * Painel de correção exibido abaixo da mensagem original. "Accept" marca
- * `accepted_by_user` no banco (métrica) e "Dismiss" apenas esconde o
- * painel localmente, sem alterar nada no banco — em ambos os casos o
- * painel some da tela (spec: "painel desaparece").
+ * Painel de correção PENDENTE (ainda não aceita/rejeitada), exibido
+ * abaixo da mensagem original. Puramente apresentacional — quem decide o
+ * que "aceitar"/"rejeitar" significam é o `MessageBubble` (ver lá: aceitar
+ * troca esta UI pela mensagem riscada + versão corrigida).
  */
-function CorrectionPanel({ correction }: CorrectionPanelProps) {
-  const [isDismissed, setIsDismissed] = useState(false)
-  // Estado otimista para feedback imediato ao clicar "Accept" — o estado
-  // "de verdade" é `correction.acceptedByUser`, que também reage a um
-  // Realtime UPDATE vindo do outro participante (ex: amigo aceitou a
-  // mesma correção em outra aba).
-  const [isOptimisticallyAccepted, setIsOptimisticallyAccepted] = useState(false)
-
-  if (isDismissed || correction.acceptedByUser || isOptimisticallyAccepted) return null
-
-  async function handleAccept() {
-    setIsOptimisticallyAccepted(true)
-    await markCorrectionAsAccepted(correction.id)
-  }
-
+function CorrectionPanel({ correction, onAccept, onDismiss }: CorrectionPanelProps) {
   return (
     <div
       data-testid="correction-panel"
@@ -43,14 +29,14 @@ function CorrectionPanel({ correction }: CorrectionPanelProps) {
       <div className="mt-2 flex gap-2">
         <button
           type="button"
-          onClick={handleAccept}
+          onClick={onAccept}
           className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
         >
           Accept
         </button>
         <button
           type="button"
-          onClick={() => setIsDismissed(true)}
+          onClick={onDismiss}
           className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
         >
           Dismiss
