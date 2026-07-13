@@ -35,7 +35,10 @@ function CorrectionPanel({ correction }: CorrectionPanelProps) {
       <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-xs font-medium text-white">
         Correction
       </span>
-      <p className="font-medium text-gray-900">{correction.correctedText}</p>
+      <p className="font-medium text-gray-900">
+        <span className="text-gray-500 line-through">{correction.originalText}</span>{' '}
+        <span className="text-green-700">{correction.correctedText}</span>
+      </p>
       <p className="mt-1 text-xs text-gray-600">{correction.explanation}</p>
       <div className="mt-2 flex gap-2">
         <button

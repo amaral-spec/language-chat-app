@@ -16,9 +16,6 @@ vi.mock('../lib/supabaseClient', () => ({
     rpc: vi.fn(),
     channel: vi.fn(),
     removeChannel: vi.fn(),
-    functions: {
-      invoke: vi.fn(() => Promise.resolve({ data: { correction: null }, error: null })),
-    },
   },
 }))
 

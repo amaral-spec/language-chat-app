@@ -43,6 +43,7 @@ interface CorrectionRow {
   id: string
   message_id: string
   conversation_id: string
+  original_text: string
   corrected_text: string
   explanation: string
   confidence: number
@@ -64,6 +65,7 @@ function mapCorrection(row: CorrectionRow): Correction {
     id: row.id,
     messageId: row.message_id,
     conversationId: row.conversation_id,
+    originalText: row.original_text,
     correctedText: row.corrected_text,
     explanation: row.explanation,
     confidence: row.confidence,

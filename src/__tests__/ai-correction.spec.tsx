@@ -16,15 +16,12 @@ vi.mock('../lib/supabaseClient', () => ({
     rpc: vi.fn(),
     channel: vi.fn(),
     removeChannel: vi.fn(),
-    functions: {
-      invoke: vi.fn(() => Promise.resolve({ data: { correction: null }, error: null })),
-    },
   },
 }))
 
 const { supabase } = await import('../lib/supabaseClient')
 const { useAuthStore } = await import('../store/authStore')
-const { requestCorrection } = await import('../services/correctionService')
+const { correctMessage, requestCorrection } = await import('../services/correctionService')
 const { default: ChatRoom } = await import('../pages/ChatRoom')
 
 type SupabaseResult = { data: unknown; error: unknown }
@@ -109,6 +106,25 @@ function renderChatRoom(conversationId = 'conv-1') {
   )
 }
 
+/** Mock de `fetch` no formato de resposta da LanguageTool API. */
+function mockLanguageToolResponse(matches: Record<string, unknown>[]) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ matches }) })),
+  )
+}
+
+function grammarMatch(overrides: Record<string, unknown> = {}) {
+  return {
+    message: "Word form should be 'went'",
+    offset: 2,
+    length: 4,
+    replacements: [{ value: 'went' }, { value: 'go' }],
+    rule: { id: 'SIMPLE_AGREEMENT_VERB_EN', issueType: 'grammar' },
+    ...overrides,
+  }
+}
+
 const originalMessageRow = {
   id: 'msg-1',
   conversation_id: 'conv-1',
@@ -121,9 +137,10 @@ const correctionRow = {
   id: 'corr-1',
   message_id: 'msg-1',
   conversation_id: 'conv-1',
-  corrected_text: 'I went to the store',
-  explanation: "Past tense of 'go' is 'went'",
-  confidence: 0.92,
+  original_text: 'goed',
+  corrected_text: 'went',
+  explanation: "Word form should be 'went'",
+  confidence: 0.95,
   accepted_by_user: false,
   created_at: '2026-01-01T00:00:01Z',
 }
@@ -155,34 +172,128 @@ beforeEach(() => {
     }
     return makeBuilder({ data: [], error: null }) as never
   })
-
-  vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: { correction: null }, error: null } as never)
 })
 
-describe('correctionService.requestCorrection (regra de negócio: 5+ caracteres)', () => {
-  it('não chama a Edge Function para mensagens com menos de 5 caracteres', () => {
-    requestCorrection('msg-1', 'Hi')
-    expect(supabase.functions.invoke).not.toHaveBeenCalled()
+describe('correctionService.correctMessage (regras de negócio da LanguageTool)', () => {
+  it('não chama a LanguageTool API para mensagens com menos de 5 caracteres', async () => {
+    mockLanguageToolResponse([grammarMatch()])
+
+    const result = await correctMessage('Hi')
+
+    expect(result).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('chama a Edge Function correct-message para mensagens com 5+ caracteres', () => {
-    requestCorrection('msg-1', 'Hello there')
-    expect(supabase.functions.invoke).toHaveBeenCalledWith('correct-message', {
-      body: { messageId: 'msg-1', text: 'Hello there' },
+  it('mensagem com erro de grammar retorna a correção (offset/length extraídos corretamente)', async () => {
+    mockLanguageToolResponse([grammarMatch()])
+
+    const result = await correctMessage('I goed to the store', 'en-US')
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.languagetool.org/v2/check',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(result).toEqual({
+      original: 'goed',
+      corrected: 'went',
+      explanation: "Word form should be 'went'",
     })
+  })
+
+  it('mensagem perfeita (sem matches) retorna null', async () => {
+    mockLanguageToolResponse([])
+
+    const result = await correctMessage('I am here')
+
+    expect(result).toBeNull()
+  })
+
+  it('ignora matches de categoria Style, só considera Grammar/Spelling', async () => {
+    mockLanguageToolResponse([
+      grammarMatch({ rule: { id: 'STYLE_RULE', issueType: 'style' }, message: 'Consider rephrasing' }),
+      grammarMatch({ rule: { id: 'MISSPELLING_RULE', issueType: 'misspelling' }, message: 'Possible typo' }),
+    ])
+
+    const result = await correctMessage('teh cat is here')
+
+    expect(result?.explanation).toBe('Possible typo')
+  })
+
+  it('timeout >3s retorna null silenciosamente', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, options: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+          }),
+      ),
+    )
+
+    const resultPromise = correctMessage('I goed to the store')
+    await vi.advanceTimersByTimeAsync(3000)
+    const result = await resultPromise
+
+    expect(result).toBeNull()
+    vi.useRealTimers()
+  })
+})
+
+describe('Enviar mensagem dispara a correção (Fatia 2)', () => {
+  it('correção encontrada é salva em corrections com message_id/conversation_id corretos', async () => {
+    mockLanguageToolResponse([grammarMatch()])
+
+    const insertSpy = vi.fn(function insert(this: Record<string, unknown>, _payload: Record<string, unknown>) {
+      return this
+    })
+    queueFromOnce('corrections', () => {
+      const builder: Record<string, unknown> = {}
+      builder.insert = insertSpy.bind(builder)
+      return builder
+    })
+
+    requestCorrection('msg-1', 'conv-1', 'I goed to the store')
+
+    await waitFor(() => {
+      expect(insertSpy).toHaveBeenCalledWith({
+        message_id: 'msg-1',
+        conversation_id: 'conv-1',
+        original_text: 'goed',
+        corrected_text: 'went',
+        explanation: "Word form should be 'went'",
+        confidence: 0.95,
+      })
+    })
+  })
+
+  it('mensagem sem erro relevante não grava nada em corrections', async () => {
+    mockLanguageToolResponse([])
+    const insertSpy = vi.fn()
+    queueFromOnce('corrections', () => {
+      const builder: Record<string, unknown> = {}
+      builder.insert = insertSpy
+      return builder
+    })
+
+    requestCorrection('msg-1', 'conv-1', 'I am here')
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(insertSpy).not.toHaveBeenCalled()
   })
 })
 
 describe('Mostrar correções no UI (Fatia 3)', () => {
-  it('correção já existente (histórico) aparece com badge, texto corrigido e explicação', async () => {
+  it('correção já existente (histórico) aparece com badge, original riscado, corrigido e explicação', async () => {
     mockOneMessage()
     queueFromOnce('corrections', () => makeBuilder({ data: [correctionRow], error: null }))
 
     renderChatRoom()
 
     expect(await screen.findByText('Correction')).toBeInTheDocument()
-    expect(screen.getByText('I went to the store')).toBeInTheDocument()
-    expect(screen.getByText("Past tense of 'go' is 'went'")).toBeInTheDocument()
+    expect(screen.getByText('goed')).toBeInTheDocument()
+    expect(screen.getByText('went')).toBeInTheDocument()
+    expect(screen.getByText("Word form should be 'went'")).toBeInTheDocument()
   })
 
   it('mensagem sem correção não mostra nenhum CorrectionPanel', async () => {

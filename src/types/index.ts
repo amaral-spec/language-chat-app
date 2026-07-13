@@ -58,6 +58,7 @@ export interface Correction {
   id: string
   messageId: string
   conversationId: string
+  originalText: string
   correctedText: string
   explanation: string
   confidence: number
@@ -68,13 +69,18 @@ export interface Correction {
 export interface CorrectionPayload {
   messageId: string
   text: string
+  language: string
 }
 
-export interface ClaudeAPIResponse {
-  correction: {
-    original: string
-    corrected: string
-    explanation: string
-    confidence: number
-  } | null
+// Contrato (parcial, só os campos usados) da resposta de POST
+// https://api.languagetool.org/v2/check — ver spec/features/003-ai-correction.md
+export interface LanguageToolMatch {
+  message: string
+  offset: number
+  length: number
+  replacements: { value: string }[]
+  rule: {
+    id: string
+    issueType: string
+  }
 }

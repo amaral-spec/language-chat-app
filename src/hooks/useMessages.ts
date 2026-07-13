@@ -120,9 +120,10 @@ export function useMessages(conversationId: string | undefined) {
 
       if (result.message) {
         const confirmedMessage = result.message
-        // Dispara a correção da IA em paralelo, sem bloquear o envio —
-        // a sugestão (se houver) chega via Realtime quando estiver pronta.
-        requestCorrection(confirmedMessage.id, confirmedMessage.content)
+        // Dispara a correção (LanguageTool) em paralelo, sem bloquear o
+        // envio — a sugestão (se houver) chega via Realtime quando estiver
+        // pronta.
+        requestCorrection(confirmedMessage.id, conversationId, confirmedMessage.content)
         setMessages((current) => {
           // O Realtime pode ter entregue esta mesma mensagem (mesmo id,
           // via INSERT) antes desta resposta chegar — nesse caso já existe

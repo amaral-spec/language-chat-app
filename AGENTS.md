@@ -4,7 +4,7 @@
 
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS
 - **Backend**: Supabase (PostgreSQL + Auth + Realtime)
-- **IA**: Claude API (via Supabase Edge Functions)
+- **IA**: LanguageTool API (chamada direto do frontend, sem auth)
 - **State**: Zustand
 - **Testing**: Vitest + React Testing Library
 
@@ -57,18 +57,23 @@ specs/
   └── NNN-nome.md
 ```
 
-### Contrato de Resposta da Claude API
+### Contrato de Resposta da LanguageTool API
 
 ```json
 {
-  "correction": {
-    "original": "string",
-    "corrected": "string",
-    "explanation": "string (breve)",
-    "confidence": 0.0-1.0
-  }
+  "matches": [
+    {
+      "message": "string (explicação, breve)",
+      "offset": 0,
+      "length": 0,
+      "replacements": [{ "value": "string" }],
+      "rule": { "id": "string", "issueType": "grammar | misspelling | style | ..." }
+    }
+  ]
 }
 ```
+
+Só o primeiro match com `issueType` "grammar" ou "misspelling" vira uma `Correction` (ver `correctionService.correctMessage`); "style" e outras categorias são ignoradas.
 
 ### Segurança em Camadas
 
@@ -76,7 +81,7 @@ specs/
 2. **Database**: RLS Policies (Row Level Security)
 3. **Types**: TypeScript validation
 4. **Input**: Sanitização no serviço
-5. **API**: Claude via Edge Function (nunca frontend)
+5. **API**: LanguageTool é pública (sem auth) — não há chave a proteger
 
 ### Workflow antes de integrar
 
@@ -99,10 +104,10 @@ specs/
 - Mensagens têm: `id`, `conversation_id`, `sender_id`, `content`, `created_at`
 
 ### Correções
-- IA é chamada APENAS via Edge Function
+- LanguageTool é chamada direto do frontend (API pública, sem auth)
 - Resultado salvo em tabela `corrections`
 - Correções associadas por `message_id`
-- Nunca expor chave da Claude API no frontend
+- Apenas erros de categoria Grammar/Spelling viram sugestão (Style é ignorado)
 
 ### Database
 - Timestamp: `created_at` (NOT NULL), `updated_at` (DEFAULT NOW())
