@@ -346,6 +346,133 @@ describe('Nova conversa', () => {
   })
 })
 
+describe('Seleção de idioma ao criar conversa (spec 004, Fatia 2)', () => {
+  async function openModal() {
+    mockLoggedInUser()
+    vi.mocked(supabase.from).mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
+    const user = userEvent.setup()
+
+    renderConversations()
+    await screen.findByRole('heading', { name: 'Conversations' })
+    await user.click(screen.getByRole('button', { name: 'New Conversation' }))
+
+    return user
+  }
+
+  it('modal mostra os 7 idiomas suportados', async () => {
+    await openModal()
+
+    expect(screen.getByRole('radio', { name: 'English' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Português (Brasil)' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Português (Portugal)' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Español' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Français' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Italiano' })).toBeInTheDocument()
+  })
+
+  it('English vem pré-selecionado por padrão', async () => {
+    await openModal()
+
+    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked()
+  })
+
+  it('seleciona "Português (Brasil)" → conversa é criada com learning_language pt-BR', async () => {
+    const user = await openModal()
+
+    vi.mocked(supabase.rpc).mockImplementation((fn: string) => {
+      if (fn === 'find_user_by_email') {
+        return Promise.resolve({
+          data: [{ id: 'friend-3', email: 'friend3@example.com' }],
+          error: null,
+        }) as never
+      }
+      return Promise.resolve({ data: [], error: null }) as never
+    })
+
+    const insertSpy = vi.fn(function insert(this: Record<string, unknown>, _payload: Record<string, unknown>) {
+      return this
+    })
+    vi.mocked(supabase.from)
+      .mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
+      .mockImplementationOnce(() => {
+        const builder: Record<string, unknown> = {}
+        builder.insert = insertSpy.bind(builder)
+        builder.select = vi.fn(() => builder)
+        builder.single = vi.fn(() =>
+          Promise.resolve({
+            data: {
+              id: 'conv-3',
+              user1_id: 'user-1',
+              user2_id: 'friend-3',
+              learning_language: 'pt-BR',
+              created_at: '2026-01-06T00:00:00Z',
+            },
+            error: null,
+          }),
+        )
+        return builder as never
+      })
+
+    await user.type(screen.getByLabelText("Friend's email"), 'friend3@example.com')
+    await user.click(screen.getByRole('radio', { name: 'Português (Brasil)' }))
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(insertSpy).toHaveBeenCalledWith({
+        user1_id: 'user-1',
+        user2_id: 'friend-3',
+        learning_language: 'pt-BR',
+      })
+    })
+    expect(await screen.findByText('Chat Room')).toBeInTheDocument()
+  })
+})
+
+describe('Idioma da conversa no chat (spec 004, Fatia 3)', () => {
+  it('mostra "Learning: English 🇺🇸" para conversa com learning_language en-US', async () => {
+    mockLoggedInUser()
+    queueFromOnce('conversations', () =>
+      makeBuilder({
+        data: {
+          id: 'conv-1',
+          user1_id: 'user-1',
+          user2_id: 'friend-1',
+          learning_language: 'en-US',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: null,
+      }),
+    )
+    queueFromOnce('messages', () => makeBuilder({ data: [], error: null }))
+
+    renderChatRoom()
+
+    expect(await screen.findByText('Learning: English 🇺🇸')).toBeInTheDocument()
+  })
+
+  it('mostra "Learning: Português (Brasil) 🇧🇷" para conversa com learning_language pt-BR', async () => {
+    mockLoggedInUser()
+    queueFromOnce('conversations', () =>
+      makeBuilder({
+        data: {
+          id: 'conv-1',
+          user1_id: 'user-1',
+          user2_id: 'friend-1',
+          learning_language: 'pt-BR',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: null,
+      }),
+    )
+    queueFromOnce('messages', () => makeBuilder({ data: [], error: null }))
+
+    renderChatRoom()
+
+    expect(await screen.findByText('Learning: Português (Brasil) 🇧🇷')).toBeInTheDocument()
+  })
+})
+
 describe('chatService.createConversation — deduplicação', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -366,6 +493,7 @@ describe('chatService.createConversation — deduplicação', () => {
       id: 'conv-existing',
       user1_id: 'user-1',
       user2_id: 'friend-1',
+      learning_language: 'pt-BR',
       created_at: '2026-01-01T00:00:00Z',
     }
 
@@ -373,13 +501,16 @@ describe('chatService.createConversation — deduplicação', () => {
       () => makeBuilder({ data: [existingConversation], error: null }) as never,
     )
 
-    const result = await chatService.createConversation('user-1', 'friend@example.com')
+    // languageCode 'es-ES' é ignorado: já existe uma conversa entre os dois,
+    // e o idioma acordado (pt-BR) não pode mudar (spec 004).
+    const result = await chatService.createConversation('user-1', 'friend@example.com', 'es-ES')
 
     expect(result.error).toBeNull()
     expect(result.conversation).toEqual({
       id: 'conv-existing',
       user1Id: 'user-1',
       user2Id: 'friend-1',
+      learningLanguage: 'pt-BR',
       createdAt: '2026-01-01T00:00:00Z',
     })
     // Só a query de checagem de existência foi feita — nenhum insert.
@@ -397,25 +528,40 @@ describe('chatService.createConversation — deduplicação', () => {
       return Promise.resolve({ data: null, error: null }) as never
     })
 
+    const insertSpy = vi.fn(function insert(this: Record<string, unknown>, _payload: Record<string, unknown>) {
+      return this
+    })
     vi.mocked(supabase.from)
       .mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
-      .mockImplementationOnce(
-        () =>
-          makeBuilder({
+      .mockImplementationOnce(() => {
+        const builder: Record<string, unknown> = {}
+        builder.insert = insertSpy.bind(builder)
+        builder.select = vi.fn(() => builder)
+        builder.single = vi.fn(() =>
+          Promise.resolve({
             data: {
               id: 'conv-new',
               user1_id: 'user-1',
               user2_id: 'friend-1',
+              learning_language: 'en-US',
               created_at: '2026-01-05T00:00:00Z',
             },
             error: null,
-          }) as never,
-      )
+          }),
+        )
+        return builder as never
+      })
 
+    // Sem languageCode explícito: padrão é English (regra de negócio da spec 004).
     const result = await chatService.createConversation('user-1', 'friend@example.com')
 
     expect(result.error).toBeNull()
     expect(result.conversation?.id).toBe('conv-new')
+    expect(insertSpy).toHaveBeenCalledWith({
+      user1_id: 'user-1',
+      user2_id: 'friend-1',
+      learning_language: 'en-US',
+    })
     expect(supabase.from).toHaveBeenCalledTimes(2)
   })
 

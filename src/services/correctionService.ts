@@ -1,11 +1,11 @@
 import { supabase } from '../lib/supabaseClient'
-import type { Correction, LanguageToolMatch } from '../types'
+import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
+import type { Correction, CorrectionPayload, LanguageCode, LanguageToolMatch } from '../types'
 
 const MIN_MESSAGE_LENGTH = 5
 const MAX_EXPLANATION_LENGTH = 200
 const LANGUAGETOOL_TIMEOUT_MS = 3000
 const LANGUAGETOOL_API_URL = 'https://api.languagetool.org/v2/check'
-const DEFAULT_LANGUAGE = 'en-US'
 // LanguageTool não retorna um score de confiança — usamos um valor fixo
 // alto, já que só chegamos aqui depois de filtrar por Grammar/Spelling
 // (ver Decisões de Design da spec).
@@ -54,7 +54,7 @@ function mapCorrection(row: CorrectionRow): Correction {
  * vez de lançar: falha é sempre silenciosa, nunca mostramos erro de
  * correção ao usuário.
  */
-async function callLanguageTool(text: string, language: string): Promise<LanguageToolMatch[] | null> {
+async function callLanguageTool(text: string, language: LanguageCode): Promise<LanguageToolMatch[] | null> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), LANGUAGETOOL_TIMEOUT_MS)
 
@@ -100,7 +100,7 @@ function toParsedCorrection(text: string, match: LanguageToolMatch): ParsedCorre
  */
 export async function correctMessage(
   text: string,
-  language: string = DEFAULT_LANGUAGE,
+  language: LanguageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<ParsedCorrection | null> {
   if (text.trim().length < MIN_MESSAGE_LENGTH) return null
 
@@ -120,12 +120,12 @@ export async function correctMessage(
  * `chatService.subscribeToCorrections`). Nunca lança: qualquer falha
  * (rede, timeout, insert) é silenciosa para o usuário.
  */
-export function requestCorrection(messageId: string, conversationId: string, text: string): void {
-  correctMessage(text).then(async (correction) => {
+export function requestCorrection(conversationId: string, payload: CorrectionPayload): void {
+  correctMessage(payload.text, payload.language).then(async (correction) => {
     if (!correction) return
 
     const { error } = await supabase.from('corrections').insert({
-      message_id: messageId,
+      message_id: payload.messageId,
       conversation_id: conversationId,
       original_text: correction.original,
       corrected_text: correction.corrected,

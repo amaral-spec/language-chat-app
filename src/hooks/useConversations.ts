@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
 import { createConversation, listConversations } from '../services/chatService'
-import type { ConversationWithPreview, CreateConversationResponse } from '../types'
+import type { ConversationWithPreview, CreateConversationResponse, LanguageCode } from '../types'
 
 export function useConversations() {
   const { user } = useAuth()
@@ -36,12 +36,12 @@ export function useConversations() {
   }, [userId])
 
   const handleCreateConversation = useCallback(
-    async (friendEmail: string): Promise<CreateConversationResponse> => {
+    async (friendEmail: string, languageCode: LanguageCode): Promise<CreateConversationResponse> => {
       if (!user) {
         return { conversation: null, error: 'Not authenticated' }
       }
 
-      const result = await createConversation(user.id, friendEmail)
+      const result = await createConversation(user.id, friendEmail, languageCode)
 
       if (result.conversation) {
         const conversation = result.conversation

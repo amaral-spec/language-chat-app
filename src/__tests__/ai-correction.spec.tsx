@@ -253,7 +253,7 @@ describe('Enviar mensagem dispara a correção (Fatia 2)', () => {
       return builder
     })
 
-    requestCorrection('msg-1', 'conv-1', 'I goed to the store')
+    requestCorrection('conv-1', { messageId: 'msg-1', text: 'I goed to the store', language: 'en-US' })
 
     await waitFor(() => {
       expect(insertSpy).toHaveBeenCalledWith({
@@ -276,10 +276,63 @@ describe('Enviar mensagem dispara a correção (Fatia 2)', () => {
       return builder
     })
 
-    requestCorrection('msg-1', 'conv-1', 'I am here')
+    requestCorrection('conv-1', { messageId: 'msg-1', text: 'I am here', language: 'en-US' })
 
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(insertSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('Idioma da conversa é passado para a LanguageTool (spec 004, Fatia 4)', () => {
+  it('envia mensagem em uma conversa de Português → LanguageTool recebe language=pt-BR', async () => {
+    mockLoggedInUser()
+    queueFromOnce('conversations', () =>
+      makeBuilder({
+        data: {
+          id: 'conv-1',
+          user1_id: 'user-1',
+          user2_id: 'friend-1',
+          learning_language: 'pt-BR',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: null,
+      }),
+    )
+    queueFromOnce('messages', () => makeBuilder({ data: [], error: null }))
+    mockLanguageToolResponse([])
+
+    queueFromOnce('messages', () => {
+      const builder: Record<string, unknown> = {}
+      builder.insert = vi.fn(() => builder)
+      builder.select = vi.fn(() => builder)
+      builder.single = vi.fn(() =>
+        Promise.resolve({
+          data: {
+            id: 'msg-1',
+            conversation_id: 'conv-1',
+            sender_id: 'user-1',
+            content: 'O gato são feliz',
+            created_at: '2026-01-01T00:00:05Z',
+          },
+          error: null,
+        }),
+      )
+      return builder
+    })
+
+    const user = userEvent.setup()
+    renderChatRoom()
+
+    await screen.findByText('Learning: Português (Brasil) 🇧🇷')
+    await user.type(screen.getByLabelText('Message'), 'O gato são feliz')
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalled()
+    })
+    const [, options] = vi.mocked(fetch).mock.calls[0]
+    const body = options?.body as URLSearchParams
+    expect(body.get('language')).toBe('pt-BR')
   })
 })
 

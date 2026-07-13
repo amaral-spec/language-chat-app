@@ -4,6 +4,7 @@ import ConversationCard from '../components/ConversationCard'
 import NewConversationModal from '../components/NewConversationModal'
 import { useAuth } from '../hooks/useAuth'
 import { useConversations } from '../hooks/useConversations'
+import type { LanguageCode } from '../types'
 
 function Conversations() {
   const { logout } = useAuth()
@@ -11,8 +12,8 @@ function Conversations() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const navigate = useNavigate()
 
-  async function handleCreateConversation(friendEmail: string): Promise<string | null> {
-    const result = await createConversation(friendEmail)
+  async function handleCreateConversation(friendEmail: string, languageCode: LanguageCode): Promise<string | null> {
+    const result = await createConversation(friendEmail, languageCode)
 
     if (result.error || !result.conversation) {
       return result.error ?? 'Failed to create conversation'

@@ -1,13 +1,17 @@
 import { useState, type FormEvent } from 'react'
+import LanguageSelector from './LanguageSelector'
+import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
+import type { LanguageCode } from '../types'
 
 interface NewConversationModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (friendEmail: string) => Promise<string | null>
+  onSubmit: (friendEmail: string, languageCode: LanguageCode) => Promise<string | null>
 }
 
 function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModalProps) {
   const [friendEmail, setFriendEmail] = useState('')
+  const [languageCode, setLanguageCode] = useState<LanguageCode>(DEFAULT_LANGUAGE_CODE)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -18,7 +22,7 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
     setError(null)
     setIsSubmitting(true)
 
-    const submitError = await onSubmit(friendEmail)
+    const submitError = await onSubmit(friendEmail, languageCode)
 
     setIsSubmitting(false)
 
@@ -28,10 +32,12 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
     }
 
     setFriendEmail('')
+    setLanguageCode(DEFAULT_LANGUAGE_CODE)
   }
 
   function handleClose() {
     setFriendEmail('')
+    setLanguageCode(DEFAULT_LANGUAGE_CODE)
     setError(null)
     onClose()
   }
@@ -62,6 +68,8 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
+
+        <LanguageSelector value={languageCode} onChange={setLanguageCode} />
 
         {error && (
           <p role="alert" className="text-sm text-red-600">

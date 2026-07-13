@@ -19,10 +19,19 @@ export interface AuthResponse {
   error: string | null
 }
 
+export type LanguageCode = 'en-US' | 'pt-BR' | 'pt-PT' | 'es-ES' | 'fr-FR' | 'de-DE' | 'it-IT'
+
+export interface Language {
+  code: LanguageCode
+  name: string
+  flag: string
+}
+
 export interface Conversation {
   id: string
   user1Id: string
   user2Id: string
+  learningLanguage: LanguageCode
   createdAt: string
 }
 
@@ -69,7 +78,7 @@ export interface Correction {
 export interface CorrectionPayload {
   messageId: string
   text: string
-  language: string
+  language: LanguageCode
 }
 
 // Contrato (parcial, só os campos usados) da resposta de POST

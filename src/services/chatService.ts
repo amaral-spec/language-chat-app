@@ -1,22 +1,26 @@
 import { supabase } from '../lib/supabaseClient'
 import { validateEmail } from './authService'
+import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
 import type {
   Conversation,
   ConversationWithPreview,
   Correction,
   CreateConversationResponse,
   CreateMessagePayload,
+  LanguageCode,
   Message,
   SendMessageResponse,
 } from '../types'
 
 const MAX_MESSAGE_LENGTH = 5000
 const DEFAULT_HISTORY_LIMIT = 50
+const CONVERSATION_COLUMNS = 'id, user1_id, user2_id, learning_language, created_at'
 
 interface ConversationRow {
   id: string
   user1_id: string
   user2_id: string
+  learning_language: string
   created_at: string
 }
 
@@ -56,6 +60,7 @@ function mapConversation(row: ConversationRow): Conversation {
     id: row.id,
     user1Id: row.user1_id,
     user2Id: row.user2_id,
+    learningLanguage: row.learning_language as LanguageCode,
     createdAt: row.created_at,
   }
 }
@@ -100,7 +105,7 @@ function getFriendId(conversation: Conversation, userId: string): string {
 export async function listConversations(userId: string): Promise<ConversationWithPreview[]> {
   const { data: conversationRows, error } = await supabase
     .from('conversations')
-    .select('id, user1_id, user2_id, created_at')
+    .select(CONVERSATION_COLUMNS)
     .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
     .order('created_at', { ascending: false })
 
@@ -147,13 +152,16 @@ export async function listConversations(userId: string): Promise<ConversationWit
 }
 
 /**
- * Cria uma conversa entre `userId` e o usuário dono de `friendEmail`.
- * Se já existir uma conversa entre os dois (em qualquer ordem de par),
- * retorna a conversa existente em vez de criar uma duplicada.
+ * Cria uma conversa entre `userId` e o usuário dono de `friendEmail`, com
+ * `languageCode` como idioma de aprendizado (imutável depois de criada —
+ * ver spec 004). Se já existir uma conversa entre os dois (em qualquer
+ * ordem de par), retorna a existente em vez de criar uma duplicada — e,
+ * nesse caso, `languageCode` é ignorado: o idioma já acordado prevalece.
  */
 export async function createConversation(
   userId: string,
   friendEmail: string,
+  languageCode: LanguageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<CreateConversationResponse> {
   if (!validateEmail(friendEmail)) {
     return { conversation: null, error: 'Invalid email format' }
@@ -175,7 +183,7 @@ export async function createConversation(
 
   const { data: existingRows, error: existingError } = await supabase
     .from('conversations')
-    .select('id, user1_id, user2_id, created_at')
+    .select(CONVERSATION_COLUMNS)
     .or(
       `and(user1_id.eq.${userId},user2_id.eq.${friendId}),and(user1_id.eq.${friendId},user2_id.eq.${userId})`,
     )
@@ -191,8 +199,8 @@ export async function createConversation(
 
   const { data: insertedRow, error: insertError } = await supabase
     .from('conversations')
-    .insert({ user1_id: userId, user2_id: friendId })
-    .select('id, user1_id, user2_id, created_at')
+    .insert({ user1_id: userId, user2_id: friendId, learning_language: languageCode })
+    .select(CONVERSATION_COLUMNS)
     .single()
 
   if (insertError || !insertedRow) {
@@ -200,6 +208,24 @@ export async function createConversation(
   }
 
   return { conversation: mapConversation(insertedRow as ConversationRow), error: null }
+}
+
+/**
+ * Busca uma conversa pelo id (ex: para mostrar o idioma de aprendizado no
+ * header do chat). RLS já restringe a leitura a participantes.
+ */
+export async function getConversation(conversationId: string): Promise<Conversation | null> {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(CONVERSATION_COLUMNS)
+    .eq('id', conversationId)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return mapConversation(data as ConversationRow)
 }
 
 /**

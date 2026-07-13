@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
 import { loadHistory, sendMessage as sendMessageToService, subscribeToMessages } from '../services/chatService'
 import { requestCorrection } from '../services/correctionService'
-import type { Message } from '../types'
+import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
+import type { LanguageCode, Message } from '../types'
 
 const OPTIMISTIC_ID_PREFIX = 'optimistic-'
 const HISTORY_PAGE_SIZE = 50
@@ -45,7 +46,7 @@ function addIfNotPresent(current: Message[], incoming: Message): Message[] {
  * página de mensagens mais antigas (cursor = `created_at` da mensagem mais
  * antiga já carregada) e prepend na lista.
  */
-export function useMessages(conversationId: string | undefined) {
+export function useMessages(conversationId: string | undefined, language: LanguageCode = DEFAULT_LANGUAGE_CODE) {
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -123,7 +124,7 @@ export function useMessages(conversationId: string | undefined) {
         // Dispara a correção (LanguageTool) em paralelo, sem bloquear o
         // envio — a sugestão (se houver) chega via Realtime quando estiver
         // pronta.
-        requestCorrection(confirmedMessage.id, conversationId, confirmedMessage.content)
+        requestCorrection(conversationId, { messageId: confirmedMessage.id, text: confirmedMessage.content, language })
         setMessages((current) => {
           // O Realtime pode ter entregue esta mesma mensagem (mesmo id,
           // via INSERT) antes desta resposta chegar — nesse caso já existe
@@ -141,7 +142,7 @@ export function useMessages(conversationId: string | undefined) {
         setError(result.error ?? 'Failed to send message')
       }
     },
-    [user, conversationId],
+    [user, conversationId, language],
   )
 
   return {
