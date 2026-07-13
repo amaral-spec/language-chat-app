@@ -154,9 +154,10 @@ export async function listConversations(userId: string): Promise<ConversationWit
 /**
  * Cria uma conversa entre `userId` e o usuário dono de `friendEmail`, com
  * `languageCode` como idioma de aprendizado (imutável depois de criada —
- * ver spec 004). Se já existir uma conversa entre os dois (em qualquer
- * ordem de par), retorna a existente em vez de criar uma duplicada — e,
- * nesse caso, `languageCode` é ignorado: o idioma já acordado prevalece.
+ * ver spec 004). Dois usuários podem ter várias conversas entre si, uma
+ * por idioma (ex: praticar inglês E português com o mesmo amigo); se já
+ * existir uma conversa entre os dois NESSE MESMO idioma, retorna a
+ * existente em vez de criar uma duplicada (ver migration 012).
  */
 export async function createConversation(
   userId: string,
@@ -184,6 +185,7 @@ export async function createConversation(
   const { data: existingRows, error: existingError } = await supabase
     .from('conversations')
     .select(CONVERSATION_COLUMNS)
+    .eq('learning_language', languageCode)
     .or(
       `and(user1_id.eq.${userId},user2_id.eq.${friendId}),and(user1_id.eq.${friendId},user2_id.eq.${userId})`,
     )

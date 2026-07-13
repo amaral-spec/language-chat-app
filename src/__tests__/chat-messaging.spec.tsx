@@ -478,7 +478,7 @@ describe('chatService.createConversation — deduplicação', () => {
     vi.clearAllMocks()
   })
 
-  it('não cria conversa duplicada quando já existe uma entre os dois usuários', async () => {
+  it('não cria conversa duplicada quando já existe uma entre os dois usuários NO MESMO idioma', async () => {
     vi.mocked(supabase.rpc).mockImplementation((fn: string) => {
       if (fn === 'find_user_by_email') {
         return Promise.resolve({
@@ -497,13 +497,10 @@ describe('chatService.createConversation — deduplicação', () => {
       created_at: '2026-01-01T00:00:00Z',
     }
 
-    vi.mocked(supabase.from).mockImplementationOnce(
-      () => makeBuilder({ data: [existingConversation], error: null }) as never,
-    )
+    const existingCheckBuilder = makeBuilder({ data: [existingConversation], error: null })
+    vi.mocked(supabase.from).mockImplementationOnce(() => existingCheckBuilder as never)
 
-    // languageCode 'es-ES' é ignorado: já existe uma conversa entre os dois,
-    // e o idioma acordado (pt-BR) não pode mudar (spec 004).
-    const result = await chatService.createConversation('user-1', 'friend@example.com', 'es-ES')
+    const result = await chatService.createConversation('user-1', 'friend@example.com', 'pt-BR')
 
     expect(result.error).toBeNull()
     expect(result.conversation).toEqual({
@@ -513,8 +510,48 @@ describe('chatService.createConversation — deduplicação', () => {
       learningLanguage: 'pt-BR',
       createdAt: '2026-01-01T00:00:00Z',
     })
+    // A checagem de existente filtra pelo idioma pedido, não só pelo par de usuários.
+    expect(existingCheckBuilder.eq).toHaveBeenCalledWith('learning_language', 'pt-BR')
     // Só a query de checagem de existência foi feita — nenhum insert.
     expect(supabase.from).toHaveBeenCalledTimes(1)
+  })
+
+  it('cria uma NOVA conversa quando já existe uma com o mesmo amigo, mas em outro idioma', async () => {
+    vi.mocked(supabase.rpc).mockImplementation((fn: string) => {
+      if (fn === 'find_user_by_email') {
+        return Promise.resolve({
+          data: [{ id: 'friend-1', email: 'friend@example.com' }],
+          error: null,
+        }) as never
+      }
+      return Promise.resolve({ data: null, error: null }) as never
+    })
+
+    // A checagem de existente já filtra por idioma (mock simplificado: como
+    // a query real filtraria por learning_language='es-ES', não encontra a
+    // conversa pt-BR existente e retorna vazio).
+    vi.mocked(supabase.from)
+      .mockImplementationOnce(() => makeBuilder({ data: [], error: null }) as never)
+      .mockImplementationOnce(
+        () =>
+          makeBuilder({
+            data: {
+              id: 'conv-new-language',
+              user1_id: 'user-1',
+              user2_id: 'friend-1',
+              learning_language: 'es-ES',
+              created_at: '2026-01-07T00:00:00Z',
+            },
+            error: null,
+          }) as never,
+      )
+
+    const result = await chatService.createConversation('user-1', 'friend@example.com', 'es-ES')
+
+    expect(result.error).toBeNull()
+    expect(result.conversation?.id).toBe('conv-new-language')
+    expect(result.conversation?.learningLanguage).toBe('es-ES')
+    expect(supabase.from).toHaveBeenCalledTimes(2)
   })
 
   it('cria conversa nova quando não existe uma entre os dois usuários', async () => {

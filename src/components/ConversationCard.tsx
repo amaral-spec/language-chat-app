@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { getLanguageByCode } from '../constants/languages'
 import type { ConversationWithPreview } from '../types'
 
 interface ConversationCardProps {
@@ -8,6 +9,7 @@ interface ConversationCardProps {
 function ConversationCard({ conversation }: ConversationCardProps) {
   const navigate = useNavigate()
   const avatarLetter = conversation.friendEmail.charAt(0).toUpperCase()
+  const language = getLanguageByCode(conversation.learningLanguage)
 
   return (
     <button
@@ -23,7 +25,10 @@ function ConversationCard({ conversation }: ConversationCardProps) {
         {avatarLetter}
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="truncate font-medium">{conversation.friendEmail}</span>
+        <span className="truncate font-medium">
+          {conversation.friendEmail} <span aria-hidden="true">{language.flag}</span>
+          <span className="sr-only">Learning: {language.name}</span>
+        </span>
         <span className="truncate text-sm text-gray-500">
           {conversation.lastMessagePreview ?? 'No messages yet'}
         </span>
