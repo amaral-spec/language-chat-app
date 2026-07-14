@@ -28,6 +28,9 @@ function ChatRoom() {
         <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
           Learning: {learningLanguage.name} {learningLanguage.flag}
         </span>
+        <Link to={`/chat/${conversationId}/stats`} className="text-sm font-medium text-blue-600 hover:underline">
+          View stats
+        </Link>
       </header>
 
       <main className="flex-1 overflow-hidden p-3">

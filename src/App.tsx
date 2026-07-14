@@ -5,6 +5,8 @@ import SignUp from './pages/SignUp'
 import Login from './pages/Login'
 import Conversations from './pages/Conversations'
 import ChatRoom from './pages/ChatRoom'
+import ConversationStats from './pages/ConversationStats'
+import Dashboard from './pages/Dashboard'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth()
@@ -57,6 +59,22 @@ function App() {
         element={
           <RequireAuth>
             <ChatRoom />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/chat/:conversationId/stats"
+        element={
+          <RequireAuth>
+            <ConversationStats />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/stats"
+        element={
+          <RequireAuth>
+            <Dashboard />
           </RequireAuth>
         }
       />

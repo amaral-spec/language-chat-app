@@ -137,10 +137,13 @@ const correctionRow = {
   id: 'corr-1',
   message_id: 'msg-1',
   conversation_id: 'conv-1',
+  sender_id: 'friend-1',
   original_text: 'goed',
   corrected_text: 'went',
   explanation: "Word form should be 'went'",
   confidence: 0.95,
+  error_type: 'SIMPLE_AGREEMENT_VERB_EN',
+  error_category: 'grammar',
   accepted_by_user: false,
   created_at: '2026-01-01T00:00:01Z',
 }
@@ -197,6 +200,8 @@ describe('correctionService.correctMessage (regras de negócio da LanguageTool)'
       original: 'goed',
       corrected: 'went',
       explanation: "Word form should be 'went'",
+      errorType: 'SIMPLE_AGREEMENT_VERB_EN',
+      errorCategory: 'grammar',
     })
   })
 
@@ -253,16 +258,24 @@ describe('Enviar mensagem dispara a correção (Fatia 2)', () => {
       return builder
     })
 
-    requestCorrection('conv-1', { messageId: 'msg-1', text: 'I goed to the store', language: 'en-US' })
+    requestCorrection('conv-1', {
+      messageId: 'msg-1',
+      senderId: 'friend-1',
+      text: 'I goed to the store',
+      language: 'en-US',
+    })
 
     await waitFor(() => {
       expect(insertSpy).toHaveBeenCalledWith({
         message_id: 'msg-1',
         conversation_id: 'conv-1',
+        sender_id: 'friend-1',
         original_text: 'goed',
         corrected_text: 'went',
         explanation: "Word form should be 'went'",
         confidence: 0.95,
+        error_type: 'SIMPLE_AGREEMENT_VERB_EN',
+        error_category: 'grammar',
       })
     })
   })
@@ -276,7 +289,7 @@ describe('Enviar mensagem dispara a correção (Fatia 2)', () => {
       return builder
     })
 
-    requestCorrection('conv-1', { messageId: 'msg-1', text: 'I am here', language: 'en-US' })
+    requestCorrection('conv-1', { messageId: 'msg-1', senderId: 'friend-1', text: 'I am here', language: 'en-US' })
 
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(insertSpy).not.toHaveBeenCalled()

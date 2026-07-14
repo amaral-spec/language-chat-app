@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import ConversationCard from '../components/ConversationCard'
 import NewConversationModal from '../components/NewConversationModal'
 import { useAuth } from '../hooks/useAuth'
@@ -28,13 +28,21 @@ function Conversations() {
     <div className="mx-auto min-h-screen max-w-lg bg-gray-50 p-4">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Conversations</h1>
-        <button
-          type="button"
-          onClick={() => logout()}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-1">
+          <Link
+            to="/stats"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Stats
+          </Link>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       <button

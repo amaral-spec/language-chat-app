@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
-import type { Correction, CorrectionPayload, LanguageCode, LanguageToolMatch } from '../types'
+import type { Correction, CorrectionPayload, ErrorCategory, LanguageCode, LanguageToolMatch } from '../types'
 
 const MIN_MESSAGE_LENGTH = 5
 const MAX_EXPLANATION_LENGTH = 200
@@ -11,18 +11,23 @@ const LANGUAGETOOL_API_URL = 'https://api.languagetool.org/v2/check'
 // (ver Decisões de Design da spec).
 const DEFAULT_CONFIDENCE = 0.95
 // Só esses dois issueTypes contam como "correção relevante" — Style e
-// outras categorias são ignoradas (regra de negócio da spec).
-const RELEVANT_ISSUE_TYPES = new Set(['grammar', 'misspelling'])
+// outras categorias são ignoradas (regra de negócio da spec). O valor
+// mapeia para `error_category` (spec 005): 'misspelling' vira 'spelling'
+// no schema, os outros ('grammar') mantêm o nome.
+const RELEVANT_ISSUE_TYPES: Record<string, ErrorCategory> = { grammar: 'grammar', misspelling: 'spelling' }
 const UNIQUE_VIOLATION_CODE = '23505'
 
 interface CorrectionRow {
   id: string
   message_id: string
   conversation_id: string
+  sender_id: string
   original_text: string
   corrected_text: string
   explanation: string
   confidence: number
+  error_type: string
+  error_category: ErrorCategory
   accepted_by_user: boolean
   created_at: string
 }
@@ -31,6 +36,8 @@ interface ParsedCorrection {
   original: string
   corrected: string
   explanation: string
+  errorType: string
+  errorCategory: ErrorCategory
 }
 
 function mapCorrection(row: CorrectionRow): Correction {
@@ -38,10 +45,13 @@ function mapCorrection(row: CorrectionRow): Correction {
     id: row.id,
     messageId: row.message_id,
     conversationId: row.conversation_id,
+    senderId: row.sender_id,
     originalText: row.original_text,
     correctedText: row.corrected_text,
     explanation: row.explanation,
     confidence: row.confidence,
+    errorType: row.error_type,
+    errorCategory: row.error_category,
     acceptedByUser: row.accepted_by_user,
     createdAt: row.created_at,
   }
@@ -79,7 +89,7 @@ async function callLanguageTool(text: string, language: LanguageCode): Promise<L
 
 /** A mensagem pode ter vários erros; mostramos só o primeiro Grammar/Spelling. */
 function pickBestMatch(matches: LanguageToolMatch[]): LanguageToolMatch | null {
-  return matches.find((match) => RELEVANT_ISSUE_TYPES.has(match.rule.issueType)) ?? null
+  return matches.find((match) => match.rule.issueType in RELEVANT_ISSUE_TYPES) ?? null
 }
 
 function toParsedCorrection(text: string, match: LanguageToolMatch): ParsedCorrection | null {
@@ -90,6 +100,8 @@ function toParsedCorrection(text: string, match: LanguageToolMatch): ParsedCorre
     original: text.substring(match.offset, match.offset + match.length),
     corrected: replacement,
     explanation: match.message.slice(0, MAX_EXPLANATION_LENGTH),
+    errorType: match.rule.id,
+    errorCategory: RELEVANT_ISSUE_TYPES[match.rule.issueType],
   }
 }
 
@@ -127,10 +139,13 @@ export function requestCorrection(conversationId: string, payload: CorrectionPay
     const { error } = await supabase.from('corrections').insert({
       message_id: payload.messageId,
       conversation_id: conversationId,
+      sender_id: payload.senderId,
       original_text: correction.original,
       corrected_text: correction.corrected,
       explanation: correction.explanation,
       confidence: DEFAULT_CONFIDENCE,
+      error_type: correction.errorType,
+      error_category: correction.errorCategory,
     })
 
     // Uma mensagem só pode ter UMA correção: se já existir (ex: chamada
@@ -159,7 +174,7 @@ export async function listCorrections(conversationId: string): Promise<Correctio
   const { data, error } = await supabase
     .from('corrections')
     .select(
-      'id, message_id, conversation_id, original_text, corrected_text, explanation, confidence, accepted_by_user, created_at',
+      'id, message_id, conversation_id, sender_id, original_text, corrected_text, explanation, confidence, error_type, error_category, accepted_by_user, created_at',
     )
     .eq('conversation_id', conversationId)
 

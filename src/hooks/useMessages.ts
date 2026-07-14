@@ -124,7 +124,12 @@ export function useMessages(conversationId: string | undefined, language: Langua
         // Dispara a correção (LanguageTool) em paralelo, sem bloquear o
         // envio — a sugestão (se houver) chega via Realtime quando estiver
         // pronta.
-        requestCorrection(conversationId, { messageId: confirmedMessage.id, text: confirmedMessage.content, language })
+        requestCorrection(conversationId, {
+          messageId: confirmedMessage.id,
+          senderId: confirmedMessage.senderId,
+          text: confirmedMessage.content,
+          language,
+        })
         setMessages((current) => {
           // O Realtime pode ter entregue esta mesma mensagem (mesmo id,
           // via INSERT) antes desta resposta chegar — nesse caso já existe

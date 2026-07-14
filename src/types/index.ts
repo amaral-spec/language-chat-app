@@ -63,22 +63,61 @@ export interface SendMessageResponse {
   error: string | null
 }
 
+export type ErrorCategory = 'grammar' | 'spelling'
+
 export interface Correction {
   id: string
   messageId: string
   conversationId: string
+  senderId: string
   originalText: string
   correctedText: string
   explanation: string
   confidence: number
+  errorType: string
+  errorCategory: ErrorCategory
   acceptedByUser: boolean
   createdAt: string
 }
 
 export interface CorrectionPayload {
   messageId: string
+  senderId: string
   text: string
   language: LanguageCode
+}
+
+// "Erro frequente" (spec 005): agrupamento de correções pelo mesmo
+// `errorType` (rule id da LanguageTool), com o texto de uma ocorrência
+// como rótulo legível para o usuário.
+export interface ErrorFrequency {
+  errorType: string
+  category: ErrorCategory
+  label: string
+  count: number
+}
+
+export interface DailyAccuracy {
+  date: string // 'YYYY-MM-DD'
+  totalMessages: number
+  correctMessages: number
+  accuracy: number
+}
+
+export interface ConversationStats {
+  totalMessages: number
+  accuracy: number
+  topErrors: ErrorFrequency[]
+  yourErrorCount: number
+  friendErrorCount: number
+}
+
+export interface UserStats {
+  totalMessages: number
+  accuracy: number
+  topErrors: ErrorFrequency[]
+  progressByDay: DailyAccuracy[]
+  languages: LanguageCode[]
 }
 
 // Contrato (parcial, só os campos usados) da resposta de POST

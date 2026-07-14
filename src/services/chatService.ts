@@ -7,6 +7,7 @@ import type {
   Correction,
   CreateConversationResponse,
   CreateMessagePayload,
+  ErrorCategory,
   LanguageCode,
   Message,
   SendMessageResponse,
@@ -47,10 +48,13 @@ interface CorrectionRow {
   id: string
   message_id: string
   conversation_id: string
+  sender_id: string
   original_text: string
   corrected_text: string
   explanation: string
   confidence: number
+  error_type: string
+  error_category: ErrorCategory
   accepted_by_user: boolean
   created_at: string
 }
@@ -70,10 +74,13 @@ function mapCorrection(row: CorrectionRow): Correction {
     id: row.id,
     messageId: row.message_id,
     conversationId: row.conversation_id,
+    senderId: row.sender_id,
     originalText: row.original_text,
     correctedText: row.corrected_text,
     explanation: row.explanation,
     confidence: row.confidence,
+    errorType: row.error_type,
+    errorCategory: row.error_category,
     acceptedByUser: row.accepted_by_user,
     createdAt: row.created_at,
   }
@@ -410,6 +417,34 @@ export function subscribeToCorrections(
       (payload: { new: CorrectionRow }) => {
         onChange(mapCorrection(payload.new))
       },
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * Assina INSERT e UPDATE em `corrections` filtrados por `sender_id`, não
+ * por conversa — usado pelo dashboard pessoal (spec 005, Fatia 3), que
+ * agrega dados de TODAS as conversas do usuário e não pode assinar um
+ * canal por conversa (postgres_changes só filtra por uma coluna igual, não
+ * por "conversation_id in (...)"). Funciona porque `sender_id` é
+ * denormalizado direto em `corrections` (ver migration 013).
+ */
+export function subscribeToUserCorrections(userId: string, onChange: () => void): () => void {
+  const channel = supabase
+    .channel(`corrections:sender:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'corrections', filter: `sender_id=eq.${userId}` },
+      () => onChange(),
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'corrections', filter: `sender_id=eq.${userId}` },
+      () => onChange(),
     )
     .subscribe()
 
