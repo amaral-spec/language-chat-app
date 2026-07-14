@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../services/authService'
+import Button from '../components/ui/Button'
+import ErrorText from '../components/ui/ErrorText'
+import Field from '../components/ui/Field'
+import Logo from '../components/ui/Logo'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -27,62 +31,64 @@ function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-xl font-semibold text-gray-900">Login</h1>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink-50 p-4">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-24 -top-32 h-80 w-80 rounded-full bg-brand-200/50 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-accent-200/50 blur-3xl"
+      />
 
-        <div className="space-y-1">
-          <label htmlFor="login-email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
+      <div className="relative w-full max-w-sm">
+        <div className="mb-6 flex justify-center">
+          <Logo size="lg" />
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="animate-slide-up space-y-5 rounded-3xl border border-ink-200/70 bg-white/95 p-7 shadow-xl shadow-brand-900/5 backdrop-blur-sm"
+        >
+          <div className="space-y-1 text-center">
+            <h1 className="font-display text-2xl font-bold text-ink-900">Login</h1>
+            <p className="text-sm text-ink-500">Log in to keep the conversation going.</p>
+          </div>
+
+          <Field
             id="login-email"
+            label="Email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            autoComplete="email"
           />
-        </div>
 
-        <div className="space-y-1">
-          <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
-          <input
+          <Field
             id="login-password"
+            label="Password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            autoComplete="current-password"
           />
-        </div>
 
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
+          {error && <ErrorText>{error}</ErrorText>}
+
+          <Button type="submit" disabled={isSubmitting} fullWidth>
+            {isSubmitting ? 'Logging in…' : 'Log In'}
+          </Button>
+
+          <p className="text-center text-sm text-ink-500">
+            Don't have an account?{' '}
+            <Link to="/signup" className="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
+              Sign up
+            </Link>
           </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          Log In
-        </button>
-
-        <p className="text-sm text-gray-600">
-          Don't have an account?{' '}
-          <Link to="/signup" className="font-medium text-blue-600 hover:underline">
-            Sign up
-          </Link>
-        </p>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }

@@ -1,7 +1,12 @@
+import { BarChart3, LogOut, MessageCirclePlus, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ConversationCard from '../components/ConversationCard'
 import NewConversationModal from '../components/NewConversationModal'
+import Button from '../components/ui/Button'
+import EmptyState from '../components/ui/EmptyState'
+import ErrorText from '../components/ui/ErrorText'
+import Spinner from '../components/ui/Spinner'
 import { useAuth } from '../hooks/useAuth'
 import { useConversations } from '../hooks/useConversations'
 import type { LanguageCode } from '../types'
@@ -25,62 +30,57 @@ function Conversations() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg bg-gray-50 p-4">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Conversations</h1>
-        <div className="flex items-center gap-1">
-          <Link
-            to="/stats"
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
-          >
-            Stats
-          </Link>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
-          >
-            Logout
-          </button>
+    <div className="min-h-screen bg-ink-50">
+      <div className="mx-auto max-w-lg px-4 py-5">
+        <header className="mb-5 flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink-900">Conversations</h1>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/stats"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-white hover:text-brand-600"
+            >
+              <BarChart3 size={16} aria-hidden="true" />
+              Stats
+            </Link>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-white hover:text-rose-600"
+            >
+              <LogOut size={16} aria-hidden="true" />
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <Button onClick={() => setIsModalOpen(true)} fullWidth icon={<MessageCirclePlus size={17} aria-hidden="true" />}>
+          New Conversation
+        </Button>
+
+        {error && !isModalOpen && <ErrorText className="mt-4">{error}</ErrorText>}
+
+        <div className="mt-5">
+          {isLoading ? (
+            <Spinner label="Loading conversations…" />
+          ) : conversations.length === 0 ? (
+            <EmptyState
+              icon={<Users size={20} aria-hidden="true" />}
+              title="No conversations yet. Start one!"
+              description="Invite a friend by email and pick a language to start practicing together."
+            />
+          ) : (
+            <ul className="space-y-2">
+              {conversations.map((conversation) => (
+                <li key={conversation.id}>
+                  <ConversationCard conversation={conversation} />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      </header>
+      </div>
 
-      <button
-        type="button"
-        onClick={() => setIsModalOpen(true)}
-        className="mb-4 w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        New Conversation
-      </button>
-
-      {/* Erros de criação de conversa já aparecem inline no modal; só
-          mostramos este banner para erros de fundo (ex: falha ao listar)
-          quando o modal não está cobrindo a tela. */}
-      {error && !isModalOpen && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
-          {error}
-        </p>
-      )}
-
-      {isLoading ? (
-        <p className="text-sm text-gray-500">Loading conversations...</p>
-      ) : conversations.length === 0 ? (
-        <p className="text-sm text-gray-500">No conversations yet. Start one!</p>
-      ) : (
-        <ul className="space-y-2">
-          {conversations.map((conversation) => (
-            <li key={conversation.id}>
-              <ConversationCard conversation={conversation} />
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <NewConversationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateConversation}
-      />
+      <NewConversationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateConversation} />
     </div>
   )
 }

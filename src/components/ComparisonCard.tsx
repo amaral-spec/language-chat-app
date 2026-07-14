@@ -1,3 +1,5 @@
+import Card from './ui/Card'
+
 interface ComparisonCardProps {
   yourErrorCount: number
   friendErrorCount: number
@@ -10,23 +12,23 @@ interface ComparisonCardProps {
  */
 function ComparisonCard({ yourErrorCount, friendErrorCount }: ComparisonCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-sm font-medium text-gray-500">Errors this conversation</p>
-      <div className="mt-2 flex items-center justify-around text-center">
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Errors this conversation</p>
+      <div className="mt-3 flex items-center justify-around text-center">
         <div>
-          <p className="text-2xl font-semibold text-gray-900">{yourErrorCount}</p>
-          <p className="text-xs text-gray-500">You</p>
+          <p className="font-display text-2xl font-extrabold text-ink-900">{yourErrorCount}</p>
+          <p className="mt-0.5 text-xs font-medium text-ink-500">You</p>
         </div>
-        <div className="text-gray-300">|</div>
+        <div className="h-8 w-px bg-ink-200" aria-hidden="true" />
         <div>
-          <p className="text-2xl font-semibold text-gray-900">{friendErrorCount}</p>
-          <p className="text-xs text-gray-500">Friend</p>
+          <p className="font-display text-2xl font-extrabold text-ink-900">{friendErrorCount}</p>
+          <p className="mt-0.5 text-xs font-medium text-ink-500">Friend</p>
         </div>
       </div>
       <p className="sr-only">
         You: {yourErrorCount} errors | Friend: {friendErrorCount} errors
       </p>
-    </div>
+    </Card>
   )
 }
 

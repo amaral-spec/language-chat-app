@@ -1,3 +1,4 @@
+import Card from './ui/Card'
 import { SUPPORTED_LANGUAGES } from '../constants/languages'
 import type { LanguageCode } from '../types'
 
@@ -12,18 +13,20 @@ function LanguagesCard({ languages, selectedLanguage, onSelectLanguage }: Langua
   const practicedLanguages = SUPPORTED_LANGUAGES.filter((language) => languages.includes(language.code))
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-sm font-medium text-gray-500">Languages</p>
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Languages</p>
       {practicedLanguages.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-400">No languages practiced yet</p>
+        <p className="mt-2 text-sm text-ink-400">No languages practiced yet</p>
       ) : (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => onSelectLanguage(null)}
             aria-pressed={selectedLanguage === null}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              selectedLanguage === null ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              selectedLanguage === null
+                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
+                : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
             }`}
           >
             All
@@ -34,10 +37,10 @@ function LanguagesCard({ languages, selectedLanguage, onSelectLanguage }: Langua
               type="button"
               onClick={() => onSelectLanguage(language.code)}
               aria-pressed={selectedLanguage === language.code}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                 selectedLanguage === language.code
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
+                  : 'bg-ink-100 text-ink-600 hover:bg-ink-200'
               }`}
             >
               {language.flag} {language.name}
@@ -45,7 +48,7 @@ function LanguagesCard({ languages, selectedLanguage, onSelectLanguage }: Langua
           ))}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 

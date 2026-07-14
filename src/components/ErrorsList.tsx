@@ -1,3 +1,4 @@
+import Card from './ui/Card'
 import type { ErrorFrequency } from '../types'
 
 interface ErrorsListProps {
@@ -5,25 +6,34 @@ interface ErrorsListProps {
   errors: ErrorFrequency[]
 }
 
+const CATEGORY_DOT_CLASSES: Record<ErrorFrequency['category'], string> = {
+  grammar: 'bg-brand-400',
+  spelling: 'bg-accent-400',
+}
+
 function ErrorsList({ title, errors }: ErrorsListProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-sm font-medium text-gray-500">{title}</p>
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{title}</p>
       {errors.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-400">No errors yet</p>
+        <p className="mt-2 text-sm text-ink-400">No errors yet</p>
       ) : (
-        <ol className="mt-2 space-y-1.5">
+        <ol className="mt-2.5 space-y-2">
           {errors.map((error) => (
-            <li key={error.errorType} className="flex items-center justify-between gap-3 text-sm">
-              <span className="truncate text-gray-700">{error.label}</span>
-              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+            <li key={error.errorType} className="flex items-center gap-2.5 text-sm">
+              <span
+                aria-hidden="true"
+                className={`h-2 w-2 shrink-0 rounded-full ${CATEGORY_DOT_CLASSES[error.category]}`}
+              />
+              <span className="min-w-0 flex-1 truncate text-ink-700">{error.label}</span>
+              <span className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-600">
                 {error.count}x
               </span>
             </li>
           ))}
         </ol>
       )}
-    </div>
+    </Card>
   )
 }
 

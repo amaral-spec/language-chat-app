@@ -1,3 +1,4 @@
+import { CheckCheck } from 'lucide-react'
 import { useState } from 'react'
 import CorrectionPanel from './CorrectionPanel'
 import { markCorrectionAsAccepted } from '../services/correctionService'
@@ -30,7 +31,7 @@ function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps
   const isAccepted = Boolean(correction?.acceptedByUser) || isOptimisticallyAccepted
   const showPendingPanel = Boolean(correction) && !isAccepted && !isDismissed
 
-  const time = new Date(message.createdAt).toLocaleTimeString()
+  const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   async function handleAccept() {
     if (!correction) return
@@ -41,25 +42,35 @@ function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps
   return (
     <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
       <div
-        className={`max-w-xs rounded-lg px-3 py-2 ${
-          isOwnMessage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-900'
+        className={`max-w-xs rounded-2xl px-3.5 py-2.5 sm:max-w-sm ${
+          isOwnMessage
+            ? 'rounded-br-md bg-gradient-to-br from-brand-500 to-brand-600 text-white'
+            : 'rounded-bl-md border border-ink-200/70 bg-white text-ink-900'
         }`}
       >
-        <p className={`whitespace-pre-wrap break-words ${isAccepted ? 'line-through opacity-70' : ''}`}>
+        <p className={`whitespace-pre-wrap break-words text-sm ${isAccepted ? 'line-through opacity-70' : ''}`}>
           {message.content}
         </p>
-        <span className="mt-1 block text-right text-xs opacity-70">{time}</span>
+        <span
+          className={`mt-1 flex items-center justify-end gap-1 text-right text-[11px] ${
+            isOwnMessage ? 'text-brand-100' : 'text-ink-400'
+          }`}
+        >
+          {time}
+          {isOwnMessage && <CheckCheck size={13} aria-hidden="true" />}
+        </span>
       </div>
 
       {isAccepted && correction && (
         <div
           data-testid="corrected-message"
-          className="mt-1 max-w-xs animate-fade-in rounded-lg border border-green-200 bg-green-50 p-2 text-sm"
+          className="mt-1.5 max-w-xs animate-fade-in rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5 text-sm shadow-sm shadow-emerald-900/5 sm:max-w-sm"
         >
-          <span className="mb-1 inline-block rounded bg-green-600 px-1.5 py-0.5 text-xs font-medium text-white">
+          <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+            <CheckCheck size={12} aria-hidden="true" />
             Corrected
           </span>
-          <p className="font-medium text-gray-900">{buildCorrectedMessage(message.content, correction)}</p>
+          <p className="font-medium text-ink-900">{buildCorrectedMessage(message.content, correction)}</p>
         </div>
       )}
 

@@ -1,5 +1,9 @@
+import { X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import LanguageSelector from './LanguageSelector'
+import Button from './ui/Button'
+import ErrorText from './ui/ErrorText'
+import Field from './ui/Field'
 import { DEFAULT_LANGUAGE_CODE } from '../constants/languages'
 import type { LanguageCode } from '../types'
 
@@ -47,51 +51,45 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
       role="dialog"
       aria-modal="true"
       aria-label="New Conversation"
-      className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-10 flex items-center justify-center bg-ink-950/50 p-4 backdrop-blur-sm"
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-lg"
+        className="w-full max-w-sm animate-scale-in space-y-5 rounded-3xl bg-white p-6 shadow-2xl shadow-ink-950/20"
       >
-        <h2 className="text-lg font-semibold text-gray-900">New Conversation</h2>
-
-        <div className="space-y-1">
-          <label htmlFor="friend-email" className="block text-sm font-medium text-gray-700">
-            Friend's email
-          </label>
-          <input
-            id="friend-email"
-            type="email"
-            value={friendEmail}
-            onChange={(event) => setFriendEmail(event.target.value)}
-            required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-
-        <LanguageSelector value={languageCode} onChange={setLanguageCode} />
-
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
-          </p>
-        )}
-
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-ink-900">New Conversation</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            aria-label="Close"
+            className="rounded-full p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
           >
+            <X size={18} />
+          </button>
+        </div>
+
+        <Field
+          id="friend-email"
+          label="Friend's email"
+          type="email"
+          value={friendEmail}
+          onChange={(event) => setFriendEmail(event.target.value)}
+          required
+          autoComplete="email"
+        />
+
+        <LanguageSelector value={languageCode} onChange={setLanguageCode} />
+
+        {error && <ErrorText>{error}</ErrorText>}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" onClick={handleClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Create
-          </button>
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating…' : 'Create'}
+          </Button>
         </div>
       </form>
     </div>
