@@ -32,23 +32,20 @@ function SignUp() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink-50 p-4">
+      <div aria-hidden="true" className="bg-dot-grid pointer-events-none absolute inset-0 opacity-60" />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-24 -top-32 h-80 w-80 rounded-full bg-accent-200/50 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-brand-200/50 blur-3xl"
+        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent-400 via-brand-400 to-brand-500"
       />
 
-      <div className="relative w-full max-w-sm">
+      <main className="relative w-full max-w-sm">
         <div className="mb-6 flex justify-center">
           <Logo size="lg" />
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="animate-slide-up space-y-5 rounded-3xl border border-ink-200/70 bg-white/95 p-7 shadow-xl shadow-brand-900/5 backdrop-blur-sm"
+          className="animate-slide-up space-y-5 rounded-3xl border border-ink-200/70 bg-white p-7 shadow-xl shadow-ink-900/5"
         >
           <div className="space-y-1 text-center">
             <h1 className="font-display text-2xl font-bold text-ink-900">Sign Up</h1>
@@ -88,7 +85,7 @@ function SignUp() {
             </Link>
           </p>
         </form>
-      </div>
+      </main>
     </div>
   )
 }

@@ -12,10 +12,10 @@ function ProgressChart({ data }: ProgressChartProps) {
     <Card data-testid="progress-chart">
       <div className="flex items-center gap-1.5">
         <TrendingUp size={14} className="text-brand-500" aria-hidden="true" />
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Progress (last 30 days)</p>
+        <p className="text-sm font-semibold text-ink-700">Progress (last 30 days)</p>
       </div>
       {data.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-400">Not enough data yet — keep chatting!</p>
+        <p className="mt-3 text-sm text-ink-500">Not enough data yet. Keep chatting!</p>
       ) : (
         <div className="mt-3 h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">

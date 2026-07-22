@@ -43,9 +43,22 @@
   --color-ink-900: #1c1926;
   --color-ink-950: #100e17;
 
-  --animate-fade-in: fade-in 0.3s ease-out;
-  --animate-scale-in: scale-in 0.15s ease-out;
+  /*
+   * Curvas customizadas (ver skill emil-design-eng): as eases padrão do CSS
+   * são fracas demais pra sentir intencional. --ease-out-strong é pra
+   * qualquer coisa entrando/saindo de tela; --ease-in-out-strong é pra
+   * movimento contínuo (arrastar, morph); --ease-drawer é a curva de
+   * bottom sheet do iOS (via Ionic Framework).
+   */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-fade-in: fade-in 0.3s var(--ease-out-strong);
+  --animate-scale-in: scale-in 0.18s var(--ease-out-strong);
   --animate-slide-up: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-message-in: message-in 0.22s var(--ease-out-strong);
+  --animate-stagger-in: stagger-in 0.3s var(--ease-out-strong) both;
 }
 
 @layer base {
@@ -58,6 +71,17 @@
   ::selection {
     background-color: var(--color-brand-200);
     color: var(--color-brand-900);
+  }
+
+  /*
+   * Textura sutil pra telas de auth — em vez do clichê de "duas bolhas
+   * borradas nos cantos opostos" (o padrão mais repetido em telas de login
+   * geradas por IA), uma grade de pontos quase imperceptível dá profundidade
+   * sem parecer genérica.
+   */
+  .bg-dot-grid {
+    background-image: radial-gradient(var(--color-ink-300) 1px, transparent 1px);
+    background-size: 22px 22px;
   }
 
   /* Scrollbar discreta e combinando com a marca, só onde importa (chat, listas longas). */
@@ -107,5 +131,55 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Mensagem nova chegando no chat (nunca aplicada ao histórico inicial — ver Chat.tsx) */
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Item de lista com stagger — combinada com animation-delay inline por índice */
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Sensibilidade a movimento: menos e mais suave, não zero (ver skill
+ * emil-design-eng). Mantém fades curtos de opacidade, mas remove qualquer
+ * translate/scale de entrada — quem depende de reduced-motion costuma
+ * reagir mal a deslocamento e "bounce".
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-slide-up,
+  .animate-message-in,
+  .animate-stagger-in {
+    animation-duration: 150ms;
+    animation-name: reduced-motion-fade;
+  }
+}
+
+@keyframes reduced-motion-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

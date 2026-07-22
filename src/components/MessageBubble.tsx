@@ -8,6 +8,15 @@ interface MessageBubbleProps {
   message: Message
   isOwnMessage: boolean
   correction?: Correction
+  /**
+   * Só true pra mensagens que chegam via Realtime depois que o chat já
+   * carregou (ver `useMessageArrivalTracking` em Chat.tsx) — histórico e
+   * mensagens carregadas por "scroll pra cima" nunca são "novas". Só
+   * anima a entrada de mensagens do amigo: a sua própria já teve
+   * feedback instantâneo (o envio otimista), animar de novo seria
+   * redundante.
+   */
+  isNew?: boolean
 }
 
 /**
@@ -20,7 +29,7 @@ function buildCorrectedMessage(original: string, correction: Correction): string
   return original.replace(correction.originalText, correction.correctedText)
 }
 
-function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps) {
+function MessageBubble({ message, isOwnMessage, correction, isNew = false }: MessageBubbleProps) {
   const [isDismissed, setIsDismissed] = useState(false)
   // Estado otimista para feedback imediato ao clicar "Accept" — o estado
   // "de verdade" é `correction.acceptedByUser`, que também reage a um
@@ -40,7 +49,11 @@ function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps
   }
 
   return (
-    <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+    <div
+      className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} ${
+        isNew && !isOwnMessage ? 'animate-message-in' : ''
+      }`}
+    >
       <div
         className={`max-w-xs rounded-2xl px-3.5 py-2.5 sm:max-w-sm ${
           isOwnMessage
@@ -53,7 +66,7 @@ function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps
         </p>
         <span
           className={`mt-1 flex items-center justify-end gap-1 text-right text-[11px] ${
-            isOwnMessage ? 'text-brand-100' : 'text-ink-400'
+            isOwnMessage ? 'text-white' : 'text-ink-500'
           }`}
         >
           {time}
@@ -66,7 +79,7 @@ function MessageBubble({ message, isOwnMessage, correction }: MessageBubbleProps
           data-testid="corrected-message"
           className="mt-1.5 max-w-xs animate-fade-in rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5 text-sm shadow-sm shadow-emerald-900/5 sm:max-w-sm"
         >
-          <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">
             <CheckCheck size={12} aria-hidden="true" />
             Corrected
           </span>

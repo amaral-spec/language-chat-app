@@ -4,6 +4,40 @@ import MessageBubble from './MessageBubble'
 import Spinner from './ui/Spinner'
 import type { Correction, Message } from '../types'
 
+/**
+ * Decide se uma mensagem deve tocar a animação de "chegou agora"
+ * (`animate-message-in`, ver MessageBubble). A entrada só faz sentido pra
+ * mensagens que realmente chegam uma de cada vez (Realtime ou envio) —
+ * um lote inteiro de histórico aparecendo de uma vez (carregamento
+ * inicial OU "carregar mais antigas" ao rolar pra cima) nunca deve
+ * animar, senão vira o antipadrão de "tudo aparecendo ao mesmo tempo".
+ *
+ * Por isso "novo" não é "id que eu nunca vi" — é "id que apareceu fora de
+ * um lote de histórico". Absorve o lote inteiro como "já conhecido" no
+ * exato render em que `isLoadingMore` volta a `false`, antes de qualquer
+ * chamada a `isNew` nesse render.
+ */
+function useMessageArrivalTracking(messages: Message[], isLoadingMore: boolean) {
+  const knownIdsRef = useRef<Set<string> | null>(null)
+  const wasLoadingMoreRef = useRef(false)
+
+  if (knownIdsRef.current === null) {
+    knownIdsRef.current = new Set(messages.map((message) => message.id))
+  } else if (wasLoadingMoreRef.current && !isLoadingMore) {
+    for (const message of messages) {
+      knownIdsRef.current.add(message.id)
+    }
+  }
+
+  wasLoadingMoreRef.current = isLoadingMore
+
+  return (messageId: string): boolean => {
+    const isNew = !knownIdsRef.current!.has(messageId)
+    knownIdsRef.current!.add(messageId)
+    return isNew
+  }
+}
+
 // Distância (em px) do topo do container a partir da qual consideramos que
 // o usuário "chegou perto do topo" e disparamos o carregamento de mais
 // histórico. Uma pequena margem evita depender de scrollTop === 0 exato.
@@ -27,6 +61,7 @@ function Chat({
   isLoadingMore = false,
 }: ChatProps) {
   const hasHandledTopRef = useRef(false)
+  const isNewArrival = useMessageArrivalTracking(messages, isLoadingMore)
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const nearTop = event.currentTarget.scrollTop <= LOAD_MORE_SCROLL_THRESHOLD
@@ -69,6 +104,7 @@ function Chat({
           key={message.id}
           message={message}
           isOwnMessage={message.senderId === currentUserId}
+          isNew={isNewArrival(message.id)}
           correction={correctionsByMessageId?.[message.id]}
         />
       ))}

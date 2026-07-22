@@ -6,9 +6,14 @@ import type { ConversationWithPreview } from '../types'
 
 interface ConversationCardProps {
   conversation: ConversationWithPreview
+  index?: number
 }
 
-function ConversationCard({ conversation }: ConversationCardProps) {
+// Delay curto (ver skill emil-design-eng: 30-80ms entre itens) — a lista
+// inteira nunca deve demorar mais que ~250ms pra terminar de entrar.
+const STAGGER_STEP_MS = 40
+
+function ConversationCard({ conversation, index = 0 }: ConversationCardProps) {
   const navigate = useNavigate()
   const language = getLanguageByCode(conversation.learningLanguage)
 
@@ -16,7 +21,8 @@ function ConversationCard({ conversation }: ConversationCardProps) {
     <button
       type="button"
       onClick={() => navigate(`/chat/${conversation.id}`)}
-      className="group flex w-full items-center gap-3 rounded-2xl border border-ink-200/70 bg-white p-3 text-left shadow-sm shadow-ink-900/[0.03] transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5"
+      style={{ animationDelay: `${index * STAGGER_STEP_MS}ms` }}
+      className="group flex w-full animate-stagger-in items-center gap-3 rounded-2xl border border-ink-200/70 bg-white p-3 text-left shadow-sm shadow-ink-900/[0.03] transition-[transform,border-color,box-shadow] duration-200 ease-out-strong hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5 active:scale-[0.985] active:duration-100"
     >
       <Avatar label={conversation.friendEmail} />
 
@@ -34,7 +40,7 @@ function ConversationCard({ conversation }: ConversationCardProps) {
       <ChevronRight
         aria-hidden="true"
         size={18}
-        className="shrink-0 text-ink-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-400"
+        className="shrink-0 text-ink-400 transition-transform duration-200 ease-out-strong group-hover:translate-x-0.5 group-hover:text-brand-400"
       />
     </button>
   )

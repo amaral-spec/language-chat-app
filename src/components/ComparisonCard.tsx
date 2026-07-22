@@ -13,7 +13,7 @@ interface ComparisonCardProps {
 function ComparisonCard({ yourErrorCount, friendErrorCount }: ComparisonCardProps) {
   return (
     <Card>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Errors this conversation</p>
+      <p className="text-sm font-semibold text-ink-700">Errors this conversation</p>
       <div className="mt-3 flex items-center justify-around text-center">
         <div>
           <p className="font-display text-2xl font-extrabold text-ink-900">{yourErrorCount}</p>

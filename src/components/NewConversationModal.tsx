@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import LanguageSelector from './LanguageSelector'
 import Button from './ui/Button'
 import ErrorText from './ui/ErrorText'
@@ -13,13 +13,42 @@ interface NewConversationModalProps {
   onSubmit: (friendEmail: string, languageCode: LanguageCode) => Promise<string | null>
 }
 
+const EXIT_DURATION_MS = 150
+
+/**
+ * Mantém o modal montado por mais `exitDurationMs` depois que `isOpen`
+ * vira `false`, pra dar tempo da transição de saída tocar (sem isso, o
+ * elemento some do DOM instantaneamente e não dá pra ver nenhuma
+ * animação de fechamento). Abrir continua instantâneo — o ajuste de
+ * estado acontece durante o próprio render (padrão oficial do React pra
+ * "derivar estado de uma prop que mudou"), sem esperar um efeito.
+ */
+function useDelayedUnmount(isOpen: boolean, exitDurationMs: number): boolean {
+  const [shouldRender, setShouldRender] = useState(isOpen)
+
+  if (isOpen && !shouldRender) {
+    setShouldRender(true)
+  }
+
+  useEffect(() => {
+    if (isOpen || !shouldRender) return
+    const timeout = setTimeout(() => setShouldRender(false), exitDurationMs)
+    return () => clearTimeout(timeout)
+  }, [isOpen, shouldRender, exitDurationMs])
+
+  return shouldRender
+}
+
 function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModalProps) {
   const [friendEmail, setFriendEmail] = useState('')
   const [languageCode, setLanguageCode] = useState<LanguageCode>(DEFAULT_LANGUAGE_CODE)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (!isOpen) return null
+  const shouldRender = useDelayedUnmount(isOpen, EXIT_DURATION_MS)
+  const isClosing = shouldRender && !isOpen
+
+  if (!shouldRender) return null
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -51,11 +80,15 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
       role="dialog"
       aria-modal="true"
       aria-label="New Conversation"
-      className="fixed inset-0 z-10 flex items-center justify-center bg-ink-950/50 p-4 backdrop-blur-sm"
+      className={`fixed inset-0 z-10 flex items-center justify-center bg-ink-950/50 p-4 backdrop-blur-sm transition-opacity duration-150 ease-out-strong starting:opacity-0 ${
+        isClosing ? 'opacity-0' : 'opacity-100'
+      }`}
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm animate-scale-in space-y-5 rounded-3xl bg-white p-6 shadow-2xl shadow-ink-950/20"
+        className={`w-full max-w-sm space-y-5 rounded-3xl bg-white p-6 shadow-2xl shadow-ink-950/20 transition-[transform,opacity] ease-out-strong starting:scale-95 starting:opacity-0 ${
+          isClosing ? 'scale-95 opacity-0 duration-150' : 'scale-100 opacity-100 duration-200'
+        }`}
       >
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink-900">New Conversation</h2>
@@ -63,7 +96,7 @@ function NewConversationModal({ isOpen, onClose, onSubmit }: NewConversationModa
             type="button"
             onClick={handleClose}
             aria-label="Close"
-            className="rounded-full p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
+            className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-500 transition-[background-color,color,transform] duration-150 ease-out-strong hover:bg-ink-100 hover:text-ink-600 active:scale-90"
           >
             <X size={18} />
           </button>

@@ -19,12 +19,12 @@ function CorrectionPanel({ correction, onAccept, onDismiss }: CorrectionPanelPro
       data-testid="correction-panel"
       className="mt-1.5 max-w-xs animate-fade-in space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm shadow-sm shadow-amber-900/5"
     >
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-white">
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-ink-900">
         <Wand2 size={12} aria-hidden="true" />
         Correction
       </span>
       <p className="font-medium text-ink-900">
-        <span className="text-ink-400 line-through">{correction.originalText}</span>{' '}
+        <span className="text-ink-600 line-through">{correction.originalText}</span>{' '}
         <span className="font-semibold text-emerald-700">{correction.correctedText}</span>
       </p>
       <p className="text-xs leading-relaxed text-ink-600">{correction.explanation}</p>
@@ -32,7 +32,7 @@ function CorrectionPanel({ correction, onAccept, onDismiss }: CorrectionPanelPro
         <button
           type="button"
           onClick={onAccept}
-          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white transition-[background-color,transform] duration-150 ease-out-strong hover:bg-emerald-800 active:scale-[0.96]"
         >
           <Check size={13} aria-hidden="true" />
           Accept
@@ -40,7 +40,7 @@ function CorrectionPanel({ correction, onAccept, onDismiss }: CorrectionPanelPro
         <button
           type="button"
           onClick={onDismiss}
-          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-500 transition-colors hover:bg-amber-100 hover:text-ink-700"
+          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-500 transition-[background-color,color,transform] duration-150 ease-out-strong hover:bg-amber-100 hover:text-ink-700 active:scale-[0.96]"
         >
           <X size={13} aria-hidden="true" />
           Dismiss

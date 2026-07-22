@@ -22,7 +22,7 @@ function LanguageSelector({ value, onChange }: LanguageSelectorProps) {
           return (
             <label
               key={language.code}
-              className={`relative flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${
+              className={`relative flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out-strong active:scale-[0.97] ${
                 isSelected
                   ? 'border-brand-400 bg-brand-50 text-brand-800 ring-1 ring-brand-400'
                   : 'border-ink-200 text-ink-700 hover:border-ink-300 hover:bg-ink-50'
@@ -40,7 +40,7 @@ function LanguageSelector({ value, onChange }: LanguageSelectorProps) {
                 {language.flag}
               </span>
               <span className="flex-1 truncate font-medium">{language.name}</span>
-              {isSelected && <Check aria-hidden="true" size={15} className="shrink-0 text-brand-600" />}
+              {isSelected && <Check aria-hidden="true" size={15} className="shrink-0 animate-scale-in text-brand-600" />}
             </label>
           )
         })}
